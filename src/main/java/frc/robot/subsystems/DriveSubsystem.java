@@ -48,6 +48,9 @@ public class DriveSubsystem extends SubsystemBase {
   // Odometry class for tracking robot pose
   private SwerveDriveOdometry m_odometry;
 
+  // Speed multiplier for dashboard control
+  private double m_speedMultiplier = 1.0;
+
   /** Creates a new DriveSubsystem. */
   public DriveSubsystem() {
     // Usage reporting for MAXSwerve template
@@ -104,6 +107,10 @@ public class DriveSubsystem extends SubsystemBase {
 
     // Put heading on dashboard
     SmartDashboard.putNumber("Heading", getHeading());
+
+    // Read speed multiplier from dashboard
+    m_speedMultiplier = SmartDashboard.getNumber("Speed Multiplier", 1.0);
+    m_speedMultiplier = Math.max(0.0, Math.min(1.0, m_speedMultiplier)); // Clamp between 0 and 1
   }
 
   /**
@@ -142,6 +149,13 @@ public class DriveSubsystem extends SubsystemBase {
    *                      field.
    */
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
+    // Apply speed multiplier
+    double effectiveMultiplier = m_speedMultiplier;
+    
+    xSpeed *= effectiveMultiplier;
+    ySpeed *= effectiveMultiplier;
+    rot *= effectiveMultiplier;
+    
     // Convert the commanded speeds into the correct units for the drivetrain
     double xSpeedDelivered = xSpeed * DriveConstants.kMaxSpeedMetersPerSecond;
     double ySpeedDelivered = ySpeed * DriveConstants.kMaxSpeedMetersPerSecond;
@@ -214,13 +228,38 @@ public class DriveSubsystem extends SubsystemBase {
   public double getTurnRate() {
     return m_gyro.getAngularVel()[2].in(edu.wpi.first.units.Units.DegreesPerSecond) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
   }
-/**
- * Returns the Z-axis angular velocity from the gyro, in degrees per second.
- *
- * @return Z angular velocity in degrees per second
- */
-public double getAngularVelocityZ() {
-  return m_gyro.getAngularVel()[2].in(edu.wpi.first.units.Units.DegreesPerSecond) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
-}
+
+  /**
+   * Returns the Z-axis angular velocity from the gyro, in degrees per second.
+   *
+   * @return Z angular velocity in degrees per second
+   */
+  public double getAngularVelocityZ() {
+    return m_gyro.getAngularVel()[2].in(edu.wpi.first.units.Units.DegreesPerSecond) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+  }
+  /**
+   * Sets the speed multiplier.
+   *
+   * @param multiplier the speed multiplier (0.0 to 1.0)
+   */
+  public void setSpeedMultiplier(double multiplier) {
+    m_speedMultiplier = Math.max(0.0, Math.min(1.0, multiplier));
+  }
+
+  /**
+   * Applies thrust expo (exponential response curve) to stick input.
+   * Provides fine control at low stick inputs while maintaining full speed capability.
+   *
+   * @param input the raw stick input (-1.0 to 1.0)
+   * @return the expo-modified input
+   */
+  public static double applyThrustExpo(double input) {
+    double sign = Math.signum(input);
+    double absInput = Math.abs(input);
+    double expo = DriveConstants.kThrustExpo;
+    
+    // Apply expo curve: preserves sign, applies cubic response with linear blend
+    return sign * (Math.pow(absInput, 3.0) * (expo - 1.0) / expo + absInput / expo);
+  }
 
 }
