@@ -64,7 +64,7 @@ public final class Constants {
     // Thrust expo for smooth stick control
     // Higher values = more responsive at low stick inputs
     // Formula: output = (input^3) * (1 - kThrustExpo) + input * kThrustExpo
-    public static final double kThrustExpo = 2.0;
+    public static final double kThrustExpo = 3;
   }
 
   public static final class ModuleConstants {
