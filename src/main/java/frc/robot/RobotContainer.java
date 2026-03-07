@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.PS4Controller.Button;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.OIConstants;
 import frc.robot.subsystems.DriveSubsystem;
+import frc.robot.subsystems.VisionSubsystem;
 import frc.robot.commands.HoldHeadingCommand;
 import frc.robot.commands.CoordinatedHeadingCommand;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -26,6 +27,7 @@ import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 public class RobotContainer {
   // The robot's subsystems
   private final DriveSubsystem m_robotDrive = new DriveSubsystem();
+  private final VisionSubsystem m_vision = new VisionSubsystem();
 
   // The autonomous selector
   private final AutoSelector m_autoSelector = new AutoSelector(m_robotDrive);
@@ -82,7 +84,7 @@ public class RobotContainer {
             m_robotDrive,
             () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband),
             () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband),
-            0));
+            45));
 
     new JoystickButton(m_driverController, XboxController.Button.kX.value)
         .whileTrue(new CoordinatedHeadingCommand(
@@ -99,5 +101,14 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     return m_autoSelector.getSelectedAuto();
+  }
+
+  /**
+   * Gets the vision subsystem.
+   *
+   * @return the vision subsystem
+   */
+  public VisionSubsystem getVisionSubsystem() {
+    return m_vision;
   }
 }

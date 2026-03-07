@@ -125,6 +125,33 @@ public final class Constants {
         kMaxAngularSpeedRadiansPerSecond, kMaxAngularSpeedRadiansPerSecondSquared);
   }
 
+  public static final class VisionAlignmentConstants {
+    // Target distances for alignment
+    public static final double kTargetDistanceX = 1.5; // meters - distance in front of tag
+    public static final double kTargetOffsetY = 0.0; // meters - Y offset from tag center
+
+    // PID gains for vision-based alignment
+    // X distance control (moving toward/away from tag)
+    public static final double kVisionXP = 0.5;
+    public static final double kVisionXI = 0.0;
+    public static final double kVisionXD = 0.05;
+
+    // Y position control (side-to-side alignment)
+    public static final double kVisionYP = 0.5;
+    public static final double kVisionYI = 0.0;
+    public static final double kVisionYD = 0.05;
+
+    // Rotation/Yaw control (facing the tag)
+    public static final double kVisionYawP = 0.05;
+    public static final double kVisionYawI = 0.0;
+    public static final double kVisionYawD = 0.01;
+
+    // Tolerance values for alignment completion
+    public static final double kXTolerance = 0.05; // meters
+    public static final double kYTolerance = 0.05; // meters
+    public static final double kYawTolerance = 2.0; // degrees
+  }
+
   public static final class NeoMotorConstants {
     public static final double kFreeSpeedRpm = 5676;
   }
