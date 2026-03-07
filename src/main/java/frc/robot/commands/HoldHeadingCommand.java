@@ -9,6 +9,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.DriveSubsystem;
+import frc.robot.Constants.HeadingControllerConstants;
 
 import java.util.function.DoubleSupplier;
 
@@ -18,7 +19,6 @@ public class HoldHeadingCommand extends Command {
   private final DoubleSupplier m_ySpeedSupplier;
   private final double m_targetHeading;
   private final PIDController m_headingController;
-  private final double m_maxRotationSpeed = 0.1; // Maximum rotation speed (0.0 to 1.0)
 
   /**
    * Creates a new HoldHeadingCommand.
@@ -38,11 +38,13 @@ public class HoldHeadingCommand extends Command {
     m_ySpeedSupplier = ySpeedSupplier;
     m_targetHeading = targetHeading;
 
-    // Create PID controller for heading
-    // Starting with very small P and no D to test behavior
-    m_headingController = new PIDController(0.001, 0.0, 0.00);
+    // Create PID controller for heading with configurable gains
+    m_headingController = new PIDController(
+        HeadingControllerConstants.kHeadingP,
+        HeadingControllerConstants.kHeadingI,
+        HeadingControllerConstants.kHeadingD);
     m_headingController.enableContinuousInput(-180, 180);
-    m_headingController.setTolerance(2.0);
+    m_headingController.setTolerance(HeadingControllerConstants.kHeadingTolerance);
 
     addRequirements(driveSubsystem);
   }
@@ -62,13 +64,29 @@ public class HoldHeadingCommand extends Command {
     double xSpeed = m_xSpeedSupplier.getAsDouble();
     double ySpeed = m_ySpeedSupplier.getAsDouble();
 
+    // Calculate heading error
+    double headingError = m_targetHeading - m_driveSubsystem.getHeading();
+    
+    // Normalize error to -180 to 180 range
+    while (headingError > 180) headingError -= 360;
+    while (headingError < -180) headingError += 360;
+
     // Calculate rotation correction using PID
-    double rawPIDOutput = m_headingController.calculate(
+    double pidOutput = m_headingController.calculate(
         m_driveSubsystem.getHeading(), 
         m_targetHeading);
     
+    // Add feed-forward to PID output for faster response
+    // FF is proportional to the heading error
+    double feedForwardOutput = headingError * HeadingControllerConstants.kHeadingFF;
+    
+    // Combine PID and feed-forward outputs
+    double rawRotationOutput = pidOutput + feedForwardOutput;
+    
     // Clamp the rotation correction to max speed
-    double rotationCorrection = MathUtil.clamp(rawPIDOutput, -m_maxRotationSpeed, m_maxRotationSpeed);
+    double rotationCorrection = MathUtil.clamp(rawRotationOutput, 
+        -HeadingControllerConstants.kMaxHeadingRotationSpeed, 
+        HeadingControllerConstants.kMaxHeadingRotationSpeed);
 
     // Drive with heading hold
     m_driveSubsystem.drive(
@@ -79,7 +97,9 @@ public class HoldHeadingCommand extends Command {
 
     // Log to dashboard for debugging
     SmartDashboard.putNumber("Target Heading", m_targetHeading);
-    SmartDashboard.putNumber("Heading Error", m_targetHeading - m_driveSubsystem.getHeading());
+    SmartDashboard.putNumber("Heading Error", headingError);
+    SmartDashboard.putNumber("PID Output", pidOutput);
+    SmartDashboard.putNumber("FF Output", feedForwardOutput);
   }
 
   @Override

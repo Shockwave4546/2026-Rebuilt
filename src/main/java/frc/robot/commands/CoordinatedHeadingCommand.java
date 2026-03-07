@@ -9,6 +9,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.DriveSubsystem;
+import frc.robot.Constants.HeadingControllerConstants;
 
 import java.util.function.DoubleSupplier;
 
@@ -26,7 +27,6 @@ public class CoordinatedHeadingCommand extends Command {
   private final DoubleSupplier m_ySpeedSupplier;
   private final DoubleSupplier m_rotationOverrideSupplier;
   private final PIDController m_headingController;
-  private final double m_maxRotationSpeed = 0.1; // Maximum rotation speed (0.0 to 1.0)
   
   // Deadband to prevent jitter when joystick is near center
   private final double m_translationDeadband = 0.01;
@@ -79,11 +79,13 @@ public class CoordinatedHeadingCommand extends Command {
     m_ySpeedSupplier = ySpeedSupplier;
     m_rotationOverrideSupplier = rotationOverrideSupplier;
 
-    // Create PID controller for heading
-    // Increased P gain for better responsiveness to small corrections
-    m_headingController = new PIDController(0.001, 0.0, 0.00);
+    // Create PID controller for heading with configurable gains
+    m_headingController = new PIDController(
+        HeadingControllerConstants.kHeadingP,
+        HeadingControllerConstants.kHeadingI,
+        HeadingControllerConstants.kHeadingD);
     m_headingController.enableContinuousInput(-180, 180);
-    m_headingController.setTolerance(2.0);
+    m_headingController.setTolerance(HeadingControllerConstants.kHeadingTolerance);
 
     addRequirements(driveSubsystem);
   }
@@ -150,11 +152,21 @@ public class CoordinatedHeadingCommand extends Command {
     
     // Calculate heading error
     double headingError = targetHeading - m_driveSubsystem.getHeading();
+    
+    // Normalize error to -180 to 180 range
+    while (headingError > 180) headingError -= 360;
+    while (headingError < -180) headingError += 360;
 
     // Calculate rotation correction using PID
-    double rawPIDOutput = m_headingController.calculate(
+    double pidOutput = m_headingController.calculate(
         m_driveSubsystem.getHeading(),
         targetHeading);
+    
+    // Add feed-forward to PID output for faster response
+    double feedForwardOutput = headingError * HeadingControllerConstants.kHeadingFF;
+    
+    // Combine PID and feed-forward outputs
+    double rawRotationOutput = pidOutput + feedForwardOutput;
 
     // If driver is providing significant rotation input, blend with override
     // This allows the driver to manually adjust rotation if needed
@@ -166,7 +178,9 @@ public class CoordinatedHeadingCommand extends Command {
       m_headingController.reset();
     } else {
       // Clamp the rotation correction to max speed
-      rotationCorrection = MathUtil.clamp(rawPIDOutput, -m_maxRotationSpeed, m_maxRotationSpeed);
+      rotationCorrection = MathUtil.clamp(rawRotationOutput, 
+          -HeadingControllerConstants.kMaxHeadingRotationSpeed, 
+          HeadingControllerConstants.kMaxHeadingRotationSpeed);
     }
     
     // Calculate speed scaling based on heading error
@@ -184,6 +198,8 @@ public class CoordinatedHeadingCommand extends Command {
     SmartDashboard.putNumber("Target Heading (Coordinated)", targetHeading);
     SmartDashboard.putNumber("Current Heading", m_driveSubsystem.getHeading());
     SmartDashboard.putNumber("Heading Error (Coordinated)", headingError);
+    SmartDashboard.putNumber("PID Output (Coordinated)", pidOutput);
+    SmartDashboard.putNumber("FF Output (Coordinated)", feedForwardOutput);
     SmartDashboard.putNumber("Speed Scaling Factor", speedScaling);
     SmartDashboard.putNumber("Translation Magnitude", Math.hypot(xSpeed, ySpeed));
   }

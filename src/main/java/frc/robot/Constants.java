@@ -74,7 +74,7 @@ public final class Constants {
     public static final int kDrivingMotorPinionTeeth = 14;
 
     // Motor current limits (in Amps)
-    public static final int kDrivingMotorCurrentLimit = 25;
+    public static final int kDrivingMotorCurrentLimit = 20;
     public static final int kTurningMotorCurrentLimit = 20;
 
     // Calculations required for driving motor conversion factors and feed forward
@@ -86,6 +86,23 @@ public final class Constants {
     public static final double kDrivingMotorReduction = (45.0 * 22) / (kDrivingMotorPinionTeeth * 15);
     public static final double kDriveWheelFreeSpeedRps = (kDrivingMotorFreeSpeedRps * kWheelCircumferenceMeters)
         / kDrivingMotorReduction;
+  }
+
+  public static final class HeadingControllerConstants {
+    // PID gains for heading control
+    public static final double kHeadingP = 0.00015;//.00015 is close
+    public static final double kHeadingI = 0.0;
+    public static final double kHeadingD = 0.00001;
+    
+    // Feed-forward gain for heading control
+    // Helps overcome friction and provides faster response
+    public static final double kHeadingFF = 0.0015;//.006 small oscillations
+    
+    // Maximum rotation speed for heading controller (0.0 to 1.0)
+    public static final double kMaxHeadingRotationSpeed = 0.1;
+    
+    // Tolerance for heading in degrees
+    public static final double kHeadingTolerance = 2.0;
   }
 
   public static final class OIConstants {
