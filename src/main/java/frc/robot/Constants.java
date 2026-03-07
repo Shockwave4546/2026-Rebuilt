@@ -29,9 +29,9 @@ public final class Constants {
     public static final double kMaxAngularSpeed = 2 * Math.PI; // radians per second
 
     // Chassis configuration
-    public static final double kTrackWidth = Units.inchesToMeters(26.5);
+    public static final double kTrackWidth = Units.inchesToMeters(23.5);
     // Distance between centers of right and left wheels on robot
-    public static final double kWheelBase = Units.inchesToMeters(26.5);
+    public static final double kWheelBase = Units.inchesToMeters(23.5);
     // Distance between front and back wheels on robot
     public static final SwerveDriveKinematics kDriveKinematics = new SwerveDriveKinematics(
         new Translation2d(kWheelBase / 2, kTrackWidth / 2),
@@ -46,15 +46,15 @@ public final class Constants {
     public static final double kBackRightChassisAngularOffset = Math.PI / 2;
 
     // SPARK MAX CAN IDs
-    public static final int kFrontLeftDrivingCanId = 11;
-    public static final int kRearLeftDrivingCanId = 13;
-    public static final int kFrontRightDrivingCanId = 15;
-    public static final int kRearRightDrivingCanId = 17;
+    public static final int kFrontRightDrivingCanId = 10;
+    public static final int kRearRightDrivingCanId = 11;
+    public static final int kRearLeftDrivingCanId = 12;
+    public static final int kFrontLeftDrivingCanId = 13;
 
-    public static final int kFrontLeftTurningCanId = 10;
-    public static final int kRearLeftTurningCanId = 12;
-    public static final int kFrontRightTurningCanId = 14;
-    public static final int kRearRightTurningCanId = 16;
+    public static final int kFrontRightTurningCanId = 20;
+    public static final int kRearRightTurningCanId = 21;
+    public static final int kRearLeftTurningCanId = 22;
+    public static final int kFrontLeftTurningCanId = 23;
 
     // NavX Gyro Port
     public static final int kNavxPort = 0;
@@ -67,6 +67,10 @@ public final class Constants {
     // 13T, or 14T. This changes the drive speed of the module (a pinion gear with
     // more teeth will result in a robot that drives faster).
     public static final int kDrivingMotorPinionTeeth = 14;
+
+    // Motor current limits (in Amps)
+    public static final int kDrivingMotorCurrentLimit = 35;
+    public static final int kTurningMotorCurrentLimit = 20;
 
     // Calculations required for driving motor conversion factors and feed forward
     public static final double kDrivingMotorFreeSpeedRps = NeoMotorConstants.kFreeSpeedRpm / 60;
