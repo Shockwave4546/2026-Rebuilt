@@ -14,10 +14,11 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.wpilibj.ADIS16470_IMU;
-import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
+import com.studica.frc.Navx;     //import studica navx3
 import frc.robot.Constants.DriveConstants;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import static edu.wpi.first.units.Units.Degrees;
 
 public class DriveSubsystem extends SubsystemBase {
   // Create MAXSwerveModules
@@ -42,36 +43,67 @@ public class DriveSubsystem extends SubsystemBase {
       DriveConstants.kBackRightChassisAngularOffset);
 
   // The gyro sensor
-  private final ADIS16470_IMU m_gyro = new ADIS16470_IMU();
+  private final Navx m_gyro = new Navx(DriveConstants.kNavxPort, 100);
 
   // Odometry class for tracking robot pose
-  SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(
-      DriveConstants.kDriveKinematics,
-      Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
-      new SwerveModulePosition[] {
-          m_frontLeft.getPosition(),
-          m_frontRight.getPosition(),
-          m_rearLeft.getPosition(),
-          m_rearRight.getPosition()
-      });
+  private SwerveDriveOdometry m_odometry;
 
   /** Creates a new DriveSubsystem. */
   public DriveSubsystem() {
     // Usage reporting for MAXSwerve template
     HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_MaxSwerve);
-  }
 
-  @Override
-  public void periodic() {
-    // Update the odometry in the periodic block
-    m_odometry.update(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
+    // Give navx a chance to boot up
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    // Zero the navx to set the current heading to 0 degrees
+    m_gyro.resetYaw();
+
+    // Disable most NavX outputs to reduce CAN bus traffic
+    // enableOptionalMessages(yaw, angle, quat6d, quat9d, algoStates, pitchRoll, angularVel, linearAccel, compass, temperature)
+    m_gyro.enableOptionalMessages(
+        true,   // yaw (ENABLED - needed for odometry)
+        false,  // angle
+        true,   // quat6d
+        false,  // quat9d
+        false,  // algoStates
+        true,   // pitchRoll
+        false,  // angularVel
+        false,  // linearAccel
+        false,  // compass (DISABLED - causes drift)
+        false   // temperature
+    );
+
+    // Initialize odometry after gyro is ready
+    m_odometry = new SwerveDriveOdometry(
+        DriveConstants.kDriveKinematics,
+        Rotation2d.fromDegrees(m_gyro.getYaw().in(Degrees)),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
             m_rearLeft.getPosition(),
             m_rearRight.getPosition()
         });
+  }
+
+  @Override
+  public void periodic() {
+    // Update the odometry in the periodic block
+    m_odometry.update(
+        Rotation2d.fromDegrees(m_gyro.getYaw().in(Degrees)),
+        new SwerveModulePosition[] {
+            m_frontLeft.getPosition(),
+            m_frontRight.getPosition(),
+            m_rearLeft.getPosition(),
+            m_rearRight.getPosition()
+        });
+
+    // Put heading on dashboard
+    SmartDashboard.putNumber("Heading", getHeading());
   }
 
   /**
@@ -90,7 +122,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void resetOdometry(Pose2d pose) {
     m_odometry.resetPosition(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
+        Rotation2d.fromDegrees(m_gyro.getYaw().in(Degrees)),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -118,7 +150,7 @@ public class DriveSubsystem extends SubsystemBase {
     var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(
         fieldRelative
             ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered,
-                Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)))
+                Rotation2d.fromDegrees(m_gyro.getYaw().in(Degrees)))
             : new ChassisSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered));
     SwerveDriveKinematics.desaturateWheelSpeeds(
         swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
@@ -162,7 +194,7 @@ public class DriveSubsystem extends SubsystemBase {
 
   /** Zeroes the heading of the robot. */
   public void zeroHeading() {
-    m_gyro.reset();
+    m_gyro.resetYaw();
   }
 
   /**
@@ -171,7 +203,7 @@ public class DriveSubsystem extends SubsystemBase {
    * @return the robot's heading in degrees, from -180 to 180
    */
   public double getHeading() {
-    return Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)).getDegrees();
+    return m_gyro.getYaw().in(Degrees);
   }
 
   /**
@@ -180,6 +212,15 @@ public class DriveSubsystem extends SubsystemBase {
    * @return The turn rate of the robot, in degrees per second
    */
   public double getTurnRate() {
-    return m_gyro.getRate(IMUAxis.kZ) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+    return m_gyro.getAngularVel()[2].in(edu.wpi.first.units.Units.DegreesPerSecond) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
   }
+/**
+ * Returns the Z-axis angular velocity from the gyro, in degrees per second.
+ *
+ * @return Z angular velocity in degrees per second
+ */
+public double getAngularVelocityZ() {
+  return m_gyro.getAngularVel()[2].in(edu.wpi.first.units.Units.DegreesPerSecond) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+}
+
 }

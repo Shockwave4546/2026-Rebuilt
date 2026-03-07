@@ -56,6 +56,9 @@ public final class Constants {
     public static final int kFrontRightTurningCanId = 14;
     public static final int kRearRightTurningCanId = 16;
 
+    // NavX Gyro Port
+    public static final int kNavxPort = 0;
+
     public static final boolean kGyroReversed = false;
   }
 
