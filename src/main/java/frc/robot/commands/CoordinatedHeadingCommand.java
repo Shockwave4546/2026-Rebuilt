@@ -29,10 +29,37 @@ public class CoordinatedHeadingCommand extends Command {
   private final double m_maxRotationSpeed = 0.1; // Maximum rotation speed (0.0 to 1.0)
   
   // Deadband to prevent jitter when joystick is near center
-  private final double m_translationDeadband = 0.02;
+  private final double m_translationDeadband = 0.01;
   
   // Remember the last translation direction for holding when stopped
   private double m_lastTargetHeading = 0;
+
+  /**
+   * Calculates a speed multiplier based on heading error using exponential scaling.
+   * At 0° error: full speed (1.0)
+   * At 10° error: 50% speed (0.5)
+   * At 180° error: no speed (0.0)
+   * Uses exponential curve: 2^(-error/10) for aggressive speed limiting
+   * 
+   * @param headingError The current heading error in degrees
+   * @return Speed multiplier from 0.0 to 1.0
+   */
+  private double calculateSpeedScaling(double headingError) {
+    // Normalize error to 0-180 range (absolute value of shortest path)
+    double absError = Math.abs(headingError);
+    if (absError > 180) {
+      absError = 360 - absError;
+    }
+    
+    // Use exponential decay: 2^(-error/10)
+    // At 0°: 2^0 = 1.0 (full speed)
+    // At 10°: 2^-1 = 0.5 (half speed)
+    // At 180°: 2^-18 ≈ 0.0000038 (essentially zero)
+    double scalingFactor = Math.pow(2.0, -absError / 10.0);
+    
+    // Clamp to ensure we never go negative or exceed 1.0
+    return MathUtil.clamp(scalingFactor, 0.0, 1.0);
+  }
 
   /**
    * Creates a new CoordinatedHeadingCommand.
@@ -71,12 +98,10 @@ public class CoordinatedHeadingCommand extends Command {
    * @return Target heading in degrees (-180 to 180)
    */
   private double calculateTargetHeadingFromTranslation(double xSpeed, double ySpeed) {
-    // Apply deadband to prevent small joystick noise from affecting direction
-    double xDeadband = Math.abs(xSpeed) > m_translationDeadband ? xSpeed : 0;
-    double yDeadband = Math.abs(ySpeed) > m_translationDeadband ? ySpeed : 0;
-
+    // Calculate the magnitude of translation first
+    double translationMagnitude = Math.hypot(xSpeed, ySpeed);
+    
     // If no significant translation input, hold the last known direction
-    double translationMagnitude = Math.hypot(xDeadband, yDeadband);
     if (translationMagnitude < m_translationDeadband) {
       return m_lastTargetHeading;
     }
@@ -85,7 +110,7 @@ public class CoordinatedHeadingCommand extends Command {
     // atan2(y, x) gives angle in radians from -π to π
     // Note: In FRC coordinate system, +x is forward, +y is left
     // We want the heading that points in the direction of travel
-    double angleRadians = Math.atan2(yDeadband, xDeadband);
+    double angleRadians = Math.atan2(ySpeed, xSpeed);
     double angleDegrees = Math.toDegrees(angleRadians);
 
     // Normalize to -180 to 180 range
@@ -122,6 +147,9 @@ public class CoordinatedHeadingCommand extends Command {
 
     // Calculate target heading based on translation direction
     double targetHeading = calculateTargetHeadingFromTranslation(xSpeed, ySpeed);
+    
+    // Calculate heading error
+    double headingError = targetHeading - m_driveSubsystem.getHeading();
 
     // Calculate rotation correction using PID
     double rawPIDOutput = m_headingController.calculate(
@@ -140,18 +168,23 @@ public class CoordinatedHeadingCommand extends Command {
       // Clamp the rotation correction to max speed
       rotationCorrection = MathUtil.clamp(rawPIDOutput, -m_maxRotationSpeed, m_maxRotationSpeed);
     }
+    
+    // Calculate speed scaling based on heading error
+    // This allows smooth deceleration as we turn to face the desired direction
+    double speedScaling = calculateSpeedScaling(headingError);
 
-    // Drive with coordinated heading
+    // Drive with coordinated heading and speed scaling
     m_driveSubsystem.drive(
-        xSpeed * speedMultiplier,
-        ySpeed * speedMultiplier,
+        xSpeed * speedMultiplier * speedScaling,
+        ySpeed * speedMultiplier * speedScaling,
         rotationCorrection,
         true);
 
     // Log to dashboard for debugging
     SmartDashboard.putNumber("Target Heading (Coordinated)", targetHeading);
     SmartDashboard.putNumber("Current Heading", m_driveSubsystem.getHeading());
-    SmartDashboard.putNumber("Heading Error (Coordinated)", targetHeading - m_driveSubsystem.getHeading());
+    SmartDashboard.putNumber("Heading Error (Coordinated)", headingError);
+    SmartDashboard.putNumber("Speed Scaling Factor", speedScaling);
     SmartDashboard.putNumber("Translation Magnitude", Math.hypot(xSpeed, ySpeed));
   }
 
