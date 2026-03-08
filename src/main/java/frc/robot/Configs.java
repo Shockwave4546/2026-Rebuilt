@@ -1,11 +1,14 @@
 package frc.robot;
 
 import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.config.AbsoluteEncoderConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
 import frc.robot.Constants.ModuleConstants;
+import frc.robot.Constants.IntakeConstants;
+import frc.robot.Constants.LauncherConstants;
 
 public final class Configs {
     public static final class MAXSwerveModule {
@@ -57,6 +60,54 @@ public final class Configs {
                     // longer route.
                     .positionWrappingEnabled(true)
                     .positionWrappingInputRange(0, turningFactor);
+        }
+    }
+
+    public static final class IntakePivotProfiled {
+        public static final SparkMaxConfig pivotConfig = new SparkMaxConfig();
+
+        static {
+            pivotConfig
+                    .inverted(IntakeConstants.kIntakePivotMotorInverted)
+                    .idleMode(IdleMode.kBrake)
+                    .smartCurrentLimit(IntakeConstants.kIntakePivotCurrentLimit);
+            pivotConfig.absoluteEncoder
+                    .inverted(IntakeConstants.kIntakePivotEncoderInverted)
+                    .positionConversionFactor(1.0) // rotations
+                    .velocityConversionFactor(1.0 / 60.0) // rotations per second
+                    .apply(AbsoluteEncoderConfig.Presets.REV_ThroughBoreEncoderV2);
+        }
+    }
+
+    public static final class LauncherFeeder {
+        public static final SparkMaxConfig feederConfig = new SparkMaxConfig();
+
+        static {
+            feederConfig
+                    .inverted(LauncherConstants.kFeederMotorInverted)
+                    .idleMode(IdleMode.kCoast)
+                    .smartCurrentLimit(LauncherConstants.kFeederCurrentLimit);
+        }
+    }
+
+    public static final class LauncherShooter {
+        public static final SparkFlexConfig leaderConfig = new SparkFlexConfig();
+        public static final SparkFlexConfig followerConfig = new SparkFlexConfig();
+
+        static {
+            leaderConfig
+                    .inverted(LauncherConstants.kShooterLeaderInverted)
+                    .idleMode(IdleMode.kCoast)
+                    .smartCurrentLimit(LauncherConstants.kShooterCurrentLimit);
+            leaderConfig.encoder
+                    .positionConversionFactor(1.0) // rotations
+                    .velocityConversionFactor(1.0 / 60.0); // rotations per second (will be converted to RPM elsewhere)
+
+            followerConfig
+                    .inverted(true) // Follower is physically inverted
+                    .idleMode(IdleMode.kCoast)
+                    .smartCurrentLimit(LauncherConstants.kShooterCurrentLimit)
+                    .follow(LauncherConstants.kShooterLeaderCanId, true);
         }
     }
 }
