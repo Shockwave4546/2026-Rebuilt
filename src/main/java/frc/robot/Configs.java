@@ -9,6 +9,7 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import frc.robot.Constants.ModuleConstants;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.LauncherConstants;
+import frc.robot.Constants.IndexerConstants;
 
 public final class Configs {
     public static final class MAXSwerveModule {
@@ -108,6 +109,17 @@ public final class Configs {
                     .idleMode(IdleMode.kCoast)
                     .smartCurrentLimit(LauncherConstants.kShooterCurrentLimit)
                     .follow(LauncherConstants.kShooterLeaderCanId, true);
+        }
+    }
+
+    public static final class Indexer {
+        public static final SparkMaxConfig indexerConfig = new SparkMaxConfig();
+
+        static {
+            indexerConfig
+                    .inverted(IndexerConstants.kIndexerMotorInverted)
+                    .idleMode(IdleMode.kCoast)
+                    .smartCurrentLimit(IndexerConstants.kIndexerMotorCurrentLimit);
         }
     }
 }

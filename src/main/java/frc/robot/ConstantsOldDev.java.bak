@@ -29,9 +29,9 @@ public final class Constants {
     public static final double kMaxAngularSpeed = 2 * Math.PI; // radians per second
 
     // Chassis configuration
-    public static final double kTrackWidth = Units.inchesToMeters(23.5);
+    public static final double kTrackWidth = Units.inchesToMeters(25.5);
     // Distance between centers of right and left wheels on robot
-    public static final double kWheelBase = Units.inchesToMeters(23.5);
+    public static final double kWheelBase = Units.inchesToMeters(25.5);
     // Distance between front and back wheels on robot
     public static final SwerveDriveKinematics kDriveKinematics = new SwerveDriveKinematics(
         new Translation2d(kWheelBase / 2, kTrackWidth / 2),
@@ -51,20 +51,13 @@ public final class Constants {
     public static final int kRearLeftDrivingCanId = 12;
     public static final int kFrontLeftDrivingCanId = 13;
 
+
     public static final int kFrontRightTurningCanId = 20;
     public static final int kRearRightTurningCanId = 21;
     public static final int kRearLeftTurningCanId = 22;
     public static final int kFrontLeftTurningCanId = 23;
 
-    // NavX Gyro Port
-    public static final int kNavxPort = 0;
-
     public static final boolean kGyroReversed = false;
-
-    // Thrust expo for smooth stick control
-    // Higher values = more responsive at low stick inputs
-    // Formula: output = (input^3) * (1 - kThrustExpo) + input * kThrustExpo
-    public static final double kThrustExpo = 3;
   }
 
   public static final class ModuleConstants {
@@ -72,10 +65,6 @@ public final class Constants {
     // 13T, or 14T. This changes the drive speed of the module (a pinion gear with
     // more teeth will result in a robot that drives faster).
     public static final int kDrivingMotorPinionTeeth = 14;
-
-    // Motor current limits (in Amps)
-    public static final int kDrivingMotorCurrentLimit = 20;
-    public static final int kTurningMotorCurrentLimit = 20;
 
     // Calculations required for driving motor conversion factors and feed forward
     public static final double kDrivingMotorFreeSpeedRps = NeoMotorConstants.kFreeSpeedRpm / 60;
@@ -86,23 +75,6 @@ public final class Constants {
     public static final double kDrivingMotorReduction = (45.0 * 22) / (kDrivingMotorPinionTeeth * 15);
     public static final double kDriveWheelFreeSpeedRps = (kDrivingMotorFreeSpeedRps * kWheelCircumferenceMeters)
         / kDrivingMotorReduction;
-  }
-
-  public static final class HeadingControllerConstants {
-    // PID gains for heading control
-    public static final double kHeadingP = 0.00015;//.00015 is close
-    public static final double kHeadingI = 0.0;
-    public static final double kHeadingD = 0.00001;
-    
-    // Feed-forward gain for heading control
-    // Helps overcome friction and provides faster response
-    public static final double kHeadingFF = 0.0015;//.006 small oscillations
-    
-    // Maximum rotation speed for heading controller (0.0 to 1.0)
-    public static final double kMaxHeadingRotationSpeed = 0.1;
-    
-    // Tolerance for heading in degrees
-    public static final double kHeadingTolerance = 2.0;
   }
 
   public static final class OIConstants {
@@ -125,31 +97,41 @@ public final class Constants {
         kMaxAngularSpeedRadiansPerSecond, kMaxAngularSpeedRadiansPerSecondSquared);
   }
 
-  public static final class VisionAlignmentConstants {
-    // Target distances for alignment
-    public static final double kTargetDistanceX = 1.5; // meters - distance in front of tag
-    public static final double kTargetOffsetY = 0.0; // meters - Y offset from tag center
+  public static final class NeoMotorConstants {
+    public static final double kFreeSpeedRpm = 5676;
+  }
 
-    // PID gains for vision-based alignment
-    // X distance control (moving toward/away from tag)
-    public static final double kVisionXP = 0.05;
-    public static final double kVisionXI = 0.0;
-    public static final double kVisionXD = 0.001;
+  public static final class VisionConstants {
+    // Camera names (must match NetworkTables names)
+    public static final String kFrontLeftCameraName = "FrontLeft";
+    public static final String kFrontRightCameraName = "FrontRight";
 
-    // Y position control (side-to-side alignment)
-    public static final double kVisionYP = 0.05;
-    public static final double kVisionYI = 0.0;
-    public static final double kVisionYD = 0.001;
+    // Camera position offsets from robot center (in meters)
+    // X = forward/backward (positive = forward)
+    // Y = left/right (positive = left)
+    // Z = up/down (positive = up)
+    // These offsets transform vision measurements from camera frame to robot center frame
+    // Update these values based on actual camera mounting location relative to robot center
+    
+    // FrontLeft camera - mounted on front-left of robot
+    public static final double kFrontLeftCameraX = DriveConstants.kWheelBase / 2;
+    public static final double kFrontLeftCameraY = -1 * DriveConstants.kTrackWidth / 2;
+    public static final double kFrontLeftCameraZ = 0;
 
-    // Rotation/Yaw control (facing the tag)
-    public static final double kVisionYawP = 0.001;
-    public static final double kVisionYawI = 0.0;
-    public static final double kVisionYawD = 0.0001;
+    // FrontRight camera - mounted on front-right of robot (opposite Y from FrontLeft)
+    public static final double kFrontRightCameraX = DriveConstants.kWheelBase / 2;
+    public static final double kFrontRightCameraY = DriveConstants.kTrackWidth / 2;
+    public static final double kFrontRightCameraZ = 0;
 
-    // Tolerance values for alignment completion
-    public static final double kXTolerance = 0.03; // meters
-    public static final double kYTolerance = 0.03; // meters
-    public static final double kYawTolerance = 2.0; // degrees
+    // Camera rotation offsets in degrees (pitch, roll, yaw)
+    // These account for camera mounting angle
+    public static final double kFrontLeftCameraPitch = 0.0; // 0 degrees (level)
+    public static final double kFrontLeftCameraRoll = 0.0;
+    public static final double kFrontLeftCameraYaw = 0.0;
+
+    public static final double kFrontRightCameraPitch = 0.0; // 0 degrees (level)
+    public static final double kFrontRightCameraRoll = 0.0;
+    public static final double kFrontRightCameraYaw = 0.0;
   }
 
   public static final class IntakeConstants {
@@ -334,23 +316,5 @@ public final class Constants {
     public static final double kMaxVelocity_Shooter     = 6000.0;  // RPM (≥ max target RPM)
     public static final double kMaxAccel_Shooter        = 4000.0;  // RPM/s
     public static final double kAllowedError_Shooter    = 50.0;    // RPM — profile re-plan hysteresis
-  }
-
-  public static final class IndexerConstants {
-    // CAN ID
-    public static final int kIndexerMotorCanId = 40; // NEO 1.1 on SparkMax
-
-    // Motor inversion
-    public static final boolean kIndexerMotorInverted = false;
-
-    // Current limit (Amps)
-    public static final int kIndexerMotorCurrentLimit = 20; // NEO 1.1
-
-    // Indexer voltage (open-loop, 12V for full speed)
-    public static final double kIndexerVoltage = 12.0; // volts
-  }
-
-  public static final class NeoMotorConstants {
-    public static final double kFreeSpeedRpm = 5676;
   }
 }
