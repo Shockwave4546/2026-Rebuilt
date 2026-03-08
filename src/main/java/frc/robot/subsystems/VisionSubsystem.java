@@ -46,33 +46,25 @@ public class VisionSubsystem extends SubsystemBase {
     var frontLeftResult = m_frontLeftCamera.getLatestResult();
     if (frontLeftResult.hasTargets()) {
       m_lastFrontLeftTarget = frontLeftResult.getBestTarget();
-      SmartDashboard.putNumber("FrontLeft/Target ID", m_lastFrontLeftTarget.getFiducialId());
-      SmartDashboard.putNumber("FrontLeft/Yaw", m_lastFrontLeftTarget.getYaw());
-      SmartDashboard.putNumber("FrontLeft/Pitch", m_lastFrontLeftTarget.getPitch());
-      SmartDashboard.putNumber("FrontLeft/Area", m_lastFrontLeftTarget.getArea());
-      SmartDashboard.putNumber("FrontLeft/Skew", m_lastFrontLeftTarget.getSkew());
+      // Only log essential robot-to-tag measurements
+      SmartDashboard.putNumber("Vision/FrontLeft_TagID", m_lastFrontLeftTarget.getFiducialId());
+      SmartDashboard.putNumber("Vision/FrontLeft_Yaw", m_lastFrontLeftTarget.getYaw());
+      SmartDashboard.putNumber("Vision/FrontLeft_Skew", m_lastFrontLeftTarget.getSkew());
     } else {
       m_lastFrontLeftTarget = null;
-      SmartDashboard.putString("FrontLeft/Status", "No targets");
     }
 
     // Update front right camera
     var frontRightResult = m_frontRightCamera.getLatestResult();
     if (frontRightResult.hasTargets()) {
       m_lastFrontRightTarget = frontRightResult.getBestTarget();
-      SmartDashboard.putNumber("FrontRight/Target ID", m_lastFrontRightTarget.getFiducialId());
-      SmartDashboard.putNumber("FrontRight/Yaw", m_lastFrontRightTarget.getYaw());
-      SmartDashboard.putNumber("FrontRight/Pitch", m_lastFrontRightTarget.getPitch());
-      SmartDashboard.putNumber("FrontRight/Area", m_lastFrontRightTarget.getArea());
-      SmartDashboard.putNumber("FrontRight/Skew", m_lastFrontRightTarget.getSkew());
+      // Only log essential robot-to-tag measurements
+      SmartDashboard.putNumber("Vision/FrontRight_TagID", m_lastFrontRightTarget.getFiducialId());
+      SmartDashboard.putNumber("Vision/FrontRight_Yaw", m_lastFrontRightTarget.getYaw());
+      SmartDashboard.putNumber("Vision/FrontRight_Skew", m_lastFrontRightTarget.getSkew());
     } else {
       m_lastFrontRightTarget = null;
-      SmartDashboard.putString("FrontRight/Status", "No targets");
     }
-
-    // Dashboard debugging
-    SmartDashboard.putString("FrontLeft/Connected", m_frontLeftCamera.isConnected() ? "Connected" : "Disconnected");
-    SmartDashboard.putString("FrontRight/Connected", m_frontRightCamera.isConnected() ? "Connected" : "Disconnected");
   }
 
   /**
@@ -221,5 +213,43 @@ public class VisionSubsystem extends SubsystemBase {
    */
   public PhotonCamera getFrontRightCamera() {
     return m_frontRightCamera;
+  }
+
+  /**
+   * Gets a specific target by fiducial ID from the front left camera.
+   * Searches through all targets to find the one with matching ID.
+   *
+   * @param targetId the fiducial ID to search for
+   * @return Optional containing the target with matching ID, or empty if not found
+   */
+  public Optional<PhotonTrackedTarget> getFrontLeftTargetById(int targetId) {
+    var result = m_frontLeftCamera.getLatestResult();
+    if (result.hasTargets()) {
+      for (var target : result.getTargets()) {
+        if (target.getFiducialId() == targetId) {
+          return Optional.of(target);
+        }
+      }
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Gets a specific target by fiducial ID from the front right camera.
+   * Searches through all targets to find the one with matching ID.
+   *
+   * @param targetId the fiducial ID to search for
+   * @return Optional containing the target with matching ID, or empty if not found
+   */
+  public Optional<PhotonTrackedTarget> getFrontRightTargetById(int targetId) {
+    var result = m_frontRightCamera.getLatestResult();
+    if (result.hasTargets()) {
+      for (var target : result.getTargets()) {
+        if (target.getFiducialId() == targetId) {
+          return Optional.of(target);
+        }
+      }
+    }
+    return Optional.empty();
   }
 }

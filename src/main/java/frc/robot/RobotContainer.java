@@ -11,8 +11,12 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.OIConstants;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
-import frc.robot.commands.HoldHeadingCommand;
-import frc.robot.commands.CoordinatedHeadingCommand;
+import frc.robot.commands.vision.AlignToTagCommand;
+import frc.robot.commands.vision.AlignToTagXCommand;
+import frc.robot.commands.vision.AlignToTagYCommand;
+import frc.robot.commands.vision.AlignToTagHeadingCommand;
+import frc.robot.commands.vision.AlignToTagSkewCommand;
+import frc.robot.commands.vision.AlignToGoalCommand;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
@@ -79,19 +83,31 @@ public class RobotContainer {
             () -> m_robotDrive.zeroHeading(),
             m_robotDrive));
 
-    new JoystickButton(m_driverController, XboxController.Button.kA.value)
-        .whileTrue(new HoldHeadingCommand(
-            m_robotDrive,
-            () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband),
-            () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband),
-            45));
-
+    // Vision Alignment - Individual Axis Testing
+    // X button: Test X-axis (forward/backward distance control)
     new JoystickButton(m_driverController, XboxController.Button.kX.value)
-        .whileTrue(new CoordinatedHeadingCommand(
-            m_robotDrive,
-            () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband),
-            () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband),
-            () -> -MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband)));
+        .whileTrue(new AlignToTagXCommand(m_robotDrive, m_vision, 22));
+
+    // Y button: Test Y-axis (left/right strafe control)
+    new JoystickButton(m_driverController, XboxController.Button.kY.value)
+        .whileTrue(new AlignToTagYCommand(m_robotDrive, m_vision, 22));
+
+    // B button: Test Heading/Yaw (rotation control based on robot-to-tag angle)
+    new JoystickButton(m_driverController, XboxController.Button.kB.value)
+        .whileTrue(new AlignToTagHeadingCommand(m_robotDrive, m_vision, 22));
+
+    // LB button: Align to tag skew (square with tag heading)
+    new JoystickButton(m_driverController, XboxController.Button.kLeftBumper.value)
+        .whileTrue(new AlignToTagSkewCommand(m_robotDrive, m_vision, 22));
+
+    // RB button: Align to goal (offset from tag)
+    // Example: Goal is 0.3m forward and 0.2m left of tag, facing 45° from tag direction
+    new JoystickButton(m_driverController, XboxController.Button.kRightBumper.value)
+        .whileTrue(new AlignToGoalCommand(m_robotDrive, m_vision, 22, 0.3, -0.2, 45.0));
+
+    // A button: Full XYYaw alignment (all axes)
+    new JoystickButton(m_driverController, XboxController.Button.kA.value)
+        .whileTrue(new AlignToTagCommand(m_robotDrive, m_vision, 22));
   }
 
   /**
