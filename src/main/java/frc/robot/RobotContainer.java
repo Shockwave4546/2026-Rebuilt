@@ -6,18 +6,13 @@ package frc.robot;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.PS4Controller.Button;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.OIConstants;
+import frc.robot.Constants.IntakeConstants;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
 import frc.robot.subsystems.LauncherSubsystem;
-import frc.robot.commands.vision.AlignToTagCommand;
-import frc.robot.commands.vision.AlignToTagXCommand;
-import frc.robot.commands.vision.AlignToTagYCommand;
-import frc.robot.commands.vision.AlignToTagHeadingCommand;
-import frc.robot.commands.vision.AlignToTagSkewCommand;
-import frc.robot.commands.vision.AlignToGoalCommand;
+import frc.robot.subsystems.IntakeSubsystemProfiled;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
@@ -34,12 +29,17 @@ public class RobotContainer {
   private final DriveSubsystem m_robotDrive = new DriveSubsystem();
   private final VisionSubsystem m_vision = new VisionSubsystem();
   private final LauncherSubsystem m_launcher = new LauncherSubsystem();
+  private final IntakeSubsystemProfiled m_intake = new IntakeSubsystemProfiled();
 
   // The autonomous selector
   private final AutoSelector m_autoSelector = new AutoSelector(m_robotDrive);
 
   // The driver's controller
   XboxController m_driverController = new XboxController(OIConstants.kDriverControllerPort);
+
+  // Track intake state for toggle functionality
+  private boolean m_intakePivotToggleState = false; // false = retracted, true = deployed
+  private boolean m_intakeRollerToggleState = false; // false = off, true = on
 
   /**
    * The container for the robot. Contains subsystems, OI devices, and commands.
@@ -75,61 +75,67 @@ public class RobotContainer {
    * {@link JoystickButton}.
    */
   private void configureButtonBindings() {
-    new JoystickButton(m_driverController, Button.kR1.value)
-        .whileTrue(new RunCommand(
-            () -> m_robotDrive.setX(),
-            m_robotDrive));
-
+    // Start button: Reset heading to 0 degrees
     new JoystickButton(m_driverController, XboxController.Button.kStart.value)
         .onTrue(new InstantCommand(
             () -> m_robotDrive.zeroHeading(),
             m_robotDrive));
 
-    // Vision Alignment - Individual Axis Testing
-    // X button: Test X-axis (forward/backward distance control)
+    // X button: Toggle intake up/down (deploy/retract pivot)
     new JoystickButton(m_driverController, XboxController.Button.kX.value)
-        .whileTrue(new AlignToTagXCommand(m_robotDrive, m_vision, 22));
+        .onTrue(new InstantCommand(
+            () -> {
+              m_intakePivotToggleState = !m_intakePivotToggleState;
+              if (m_intakePivotToggleState) {
+                // Deploy intake
+                m_intake.setTargetPosition(IntakeConstants.kIntakePivotDeployedPosition);
+              } else {
+                // Retract intake
+                m_intake.setTargetPosition(IntakeConstants.kIntakePivotRetractedPosition);
+              }
+            },
+            m_intake));
 
-    // Y button: Test Y-axis (left/right strafe control)
-    new JoystickButton(m_driverController, XboxController.Button.kY.value)
-        .whileTrue(new AlignToTagYCommand(m_robotDrive, m_vision, 22));
+    // A button: Auto heading control for collecting fuel (toggle)
+    // TODO: Implement auto heading control command for fuel collection
+    // For now, placeholder - replace with actual command when available
+    // new JoystickButton(m_driverController, XboxController.Button.kA.value)
+    //     .whileTrue(new AlignToFuelCommand(m_robotDrive, m_vision));
 
-    // B button: Test Heading/Yaw (rotation control based on robot-to-tag angle)
-    new JoystickButton(m_driverController, XboxController.Button.kB.value)
-        .whileTrue(new AlignToTagHeadingCommand(m_robotDrive, m_vision, 22));
+    // B button: Hold 45 degrees yaw
+    // TODO: Implement 45 degree yaw hold command
+    // For now, placeholder - replace with actual command when available
+    // new JoystickButton(m_driverController, XboxController.Button.kB.value)
+    //     .whileTrue(new HoldYawCommand(m_robotDrive, 45.0));
 
-    // LB button: Align to tag skew (square with tag heading)
-    new JoystickButton(m_driverController, XboxController.Button.kLeftBumper.value)
-        .whileTrue(new AlignToTagSkewCommand(m_robotDrive, m_vision, 22));
-
-    // RB button: Align to goal (offset from tag)
-    // Goal is 0.6m behind and 0.25m right of tag
-    // Robot should position at 1.5m away from goal, centered, facing toward goal
+    // RB button: Toggle intake rollers on/off
     new JoystickButton(m_driverController, XboxController.Button.kRightBumper.value)
-        .whileTrue(new AlignToGoalCommand(m_robotDrive, m_vision, 22, 
-                                          -0.6, .5,    // tag to goal offset (0.6m back, 0.25m right)
-                                          1.5, 0.0,      // desired robot offset (1.5m away, centered)
-                                          0.0));         // desired yaw (0° = face toward goal)
+        .onTrue(new InstantCommand(
+            () -> {
+              m_intakeRollerToggleState = !m_intakeRollerToggleState;
+              if (m_intakeRollerToggleState) {
+                m_intake.run();  // Turn rollers on
+              } else {
+                m_intake.stopRollers();  // Turn rollers off
+              }
+            },
+            m_intake));
 
-    // A button: Full XYYaw alignment (all axes)
-    new JoystickButton(m_driverController, XboxController.Button.kA.value)
-        .whileTrue(new AlignToTagCommand(m_robotDrive, m_vision, 22));
+    // RT button (button 10): Intake reverse (hold)
+    new JoystickButton(m_driverController, 10)  // Right Trigger button ID
+        .onTrue(new InstantCommand(
+            () -> m_intake.reverseRollers(),
+            m_intake))
+        .onFalse(new InstantCommand(
+            () -> m_intake.stopRollers(),
+            m_intake));
 
-    // Shooter Controls
-    // Back button: Shoot short distance
-    new JoystickButton(m_driverController, XboxController.Button.kBack.value)
+    // LT button (button 9): Shoot (hold) - shoots using preset RPM
+    // TODO: Determine which shooter preset to use (short or long)
+    // For now using shootShort as default
+    new JoystickButton(m_driverController, 9)  // Left Trigger button ID
         .onTrue(new InstantCommand(
             () -> m_launcher.shootShort(),
-            m_launcher))
-        .onFalse(new InstantCommand(
-            () -> m_launcher.stopLauncher(),
-            m_launcher));
-
-    // Start button (if not using for zeroHeading anymore, or using buttons 9-10 for triggers)
-    // Using button 9 (Right Trigger): Shoot long distance
-    new JoystickButton(m_driverController, 9)  // Right Trigger button ID
-        .onTrue(new InstantCommand(
-            () -> m_launcher.shootLong(),
             m_launcher))
         .onFalse(new InstantCommand(
             () -> m_launcher.stopLauncher(),

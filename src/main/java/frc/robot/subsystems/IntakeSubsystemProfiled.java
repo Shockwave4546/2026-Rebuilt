@@ -78,6 +78,7 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
 
   private boolean m_isPivotEnabled = false;
   private boolean m_isRollerRunning = false;
+  private boolean m_isRollerReversing = false;
 
   public IntakeSubsystemProfiled() {
     // --- Pivot motor ---
@@ -171,8 +172,10 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     }
 
     // Rollers only spin while the arm is deployed.
-    if (m_isRollerRunning && isDeployed()) {
-      m_rollerMotor.set(IntakeConstants.kIntakeRollerSpeed);
+    if (m_isRollerReversing && isDeployed()) {
+      m_rollerMotor.set(-IntakeConstants.kIntakeRollerSpeed);  // Reverse
+    } else if (m_isRollerRunning && isDeployed()) {
+      m_rollerMotor.set(IntakeConstants.kIntakeRollerSpeed);   // Forward
     } else {
       m_rollerMotor.set(0.0);
     }
@@ -240,10 +243,18 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
   /** Enable the intake rollers (they will only spin while the arm is deployed). */
   public void run() {
     m_isRollerRunning = true;
+    m_isRollerReversing = false;
   }
 
   /** Stop the intake rollers without affecting pivot control. */
   public void stopRollers() {
+    m_isRollerRunning = false;
+    m_isRollerReversing = false;
+  }
+
+  /** Reverse the intake rollers to eject game pieces. */
+  public void reverseRollers() {
+    m_isRollerReversing = true;
     m_isRollerRunning = false;
   }
 
