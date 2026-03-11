@@ -58,6 +58,12 @@ public class LauncherSubsystem extends SubsystemBase {
     /** Target RPM read from SmartDashboard each loop. */
     private double m_targetRpm = LauncherConstants.kShooterTargetRpm;
 
+    /** Adjustable RPM for short-distance shots (tuned during matches). */
+    private double m_shortRpm = LauncherConstants.kShooterShortRpm;
+
+    /** Adjustable RPM for long-distance shots (tuned during matches). */
+    private double m_longRpm = LauncherConstants.kShooterLongRpm;
+
     // -------------------------------------------------------------------------
     // Constructor
     // -------------------------------------------------------------------------
@@ -97,8 +103,9 @@ public class LauncherSubsystem extends SubsystemBase {
                 ResetMode.kResetSafeParameters,
                 PersistMode.kPersistParameters);
 
-        // Seed the dashboard entry so the field is visible immediately on boot
-        SmartDashboard.putNumber("Launcher/Target RPM", LauncherConstants.kShooterTargetRpm);
+        // Seed the dashboard entries so the fields are visible immediately on boot
+        SmartDashboard.putNumber("Launcher/Short Shot RPM", LauncherConstants.kShooterShortRpm);
+        SmartDashboard.putNumber("Launcher/Long Shot RPM",  LauncherConstants.kShooterLongRpm);
     }
 
     // -------------------------------------------------------------------------
@@ -107,8 +114,9 @@ public class LauncherSubsystem extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // Read target RPM from dashboard every loop so changes take effect immediately
-        m_targetRpm = SmartDashboard.getNumber("Launcher/Target RPM", LauncherConstants.kShooterTargetRpm);
+        // Read adjustable RPM values from dashboard every loop so driver changes take effect immediately
+        m_shortRpm = SmartDashboard.getNumber("Launcher/Short Shot RPM", LauncherConstants.kShooterShortRpm);
+        m_longRpm  = SmartDashboard.getNumber("Launcher/Long Shot RPM",  LauncherConstants.kShooterLongRpm);
 
         if (m_isRunning) {
             // Feeder: open-loop voltage control
@@ -194,5 +202,41 @@ public class LauncherSubsystem extends SubsystemBase {
      */
     public boolean isRunning() {
         return m_isRunning;
+    }
+
+    /**
+     * Set the shooter to fire a short-distance shot using the adjustable short-range RPM.
+     * Spins up the shooter and feeds the game piece.
+     */
+    public void shootShort() {
+        m_targetRpm = m_shortRpm;
+        runLauncher();
+    }
+
+    /**
+     * Set the shooter to fire a long-distance shot using the adjustable long-range RPM.
+     * Spins up the shooter and feeds the game piece.
+     */
+    public void shootLong() {
+        m_targetRpm = m_longRpm;
+        runLauncher();
+    }
+
+    /**
+     * Spin up the shooter only for a short-distance shot (no feeder).
+     * Allows pre-spinning before releasing the game piece.
+     */
+    public void spinUpShort() {
+        m_targetRpm = m_shortRpm;
+        spinUpShooter();
+    }
+
+    /**
+     * Spin up the shooter only for a long-distance shot (no feeder).
+     * Allows pre-spinning before releasing the game piece.
+     */
+    public void spinUpLong() {
+        m_targetRpm = m_longRpm;
+        spinUpShooter();
     }
 }

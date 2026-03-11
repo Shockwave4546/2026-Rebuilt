@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.OIConstants;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
+import frc.robot.subsystems.LauncherSubsystem;
 import frc.robot.commands.vision.AlignToTagCommand;
 import frc.robot.commands.vision.AlignToTagXCommand;
 import frc.robot.commands.vision.AlignToTagYCommand;
@@ -32,6 +33,7 @@ public class RobotContainer {
   // The robot's subsystems
   private final DriveSubsystem m_robotDrive = new DriveSubsystem();
   private final VisionSubsystem m_vision = new VisionSubsystem();
+  private final LauncherSubsystem m_launcher = new LauncherSubsystem();
 
   // The autonomous selector
   private final AutoSelector m_autoSelector = new AutoSelector(m_robotDrive);
@@ -101,13 +103,37 @@ public class RobotContainer {
         .whileTrue(new AlignToTagSkewCommand(m_robotDrive, m_vision, 22));
 
     // RB button: Align to goal (offset from tag)
-    // Example: Goal is 0.3m forward and 0.2m left of tag, facing 45° from tag direction
+    // Goal is 0.6m behind and 0.25m right of tag
+    // Robot should position at 1.5m away from goal, centered, facing toward goal
     new JoystickButton(m_driverController, XboxController.Button.kRightBumper.value)
-        .whileTrue(new AlignToGoalCommand(m_robotDrive, m_vision, 22, 0.3, -0.2, 45.0));
+        .whileTrue(new AlignToGoalCommand(m_robotDrive, m_vision, 22, 
+                                          -0.6, .5,    // tag to goal offset (0.6m back, 0.25m right)
+                                          1.5, 0.0,      // desired robot offset (1.5m away, centered)
+                                          0.0));         // desired yaw (0° = face toward goal)
 
     // A button: Full XYYaw alignment (all axes)
     new JoystickButton(m_driverController, XboxController.Button.kA.value)
         .whileTrue(new AlignToTagCommand(m_robotDrive, m_vision, 22));
+
+    // Shooter Controls
+    // Back button: Shoot short distance
+    new JoystickButton(m_driverController, XboxController.Button.kBack.value)
+        .onTrue(new InstantCommand(
+            () -> m_launcher.shootShort(),
+            m_launcher))
+        .onFalse(new InstantCommand(
+            () -> m_launcher.stopLauncher(),
+            m_launcher));
+
+    // Start button (if not using for zeroHeading anymore, or using buttons 9-10 for triggers)
+    // Using button 9 (Right Trigger): Shoot long distance
+    new JoystickButton(m_driverController, 9)  // Right Trigger button ID
+        .onTrue(new InstantCommand(
+            () -> m_launcher.shootLong(),
+            m_launcher))
+        .onFalse(new InstantCommand(
+            () -> m_launcher.stopLauncher(),
+            m_launcher));
   }
 
   /**

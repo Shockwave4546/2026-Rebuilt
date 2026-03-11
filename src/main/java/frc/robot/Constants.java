@@ -311,8 +311,10 @@ public final class Constants {
     public static final double kI_Shooter = 0.0;
     public static final double kD_Shooter = 0.0;
 
-    // Target shooter speed (RPM)
-    public static final double kShooterTargetRpm = 4500.0;
+    // Target shooter speeds (RPM) — two presets for short and long distance shots
+    public static final double kShooterTargetRpm = 4500.0;  // Default (for backwards compatibility)
+    public static final double kShooterShortRpm = 3500.0;   // Close-range shot
+    public static final double kShooterLongRpm  = 4500.0;   // Long-range shot
 
     // Tolerance for "at speed" check (RPM)
     public static final double kShooterRpmTolerance = 150.0;
