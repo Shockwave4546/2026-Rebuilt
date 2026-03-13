@@ -102,7 +102,7 @@ public final class Configs {
                     .smartCurrentLimit(LauncherConstants.kShooterCurrentLimit);
             leaderConfig.encoder
                     .positionConversionFactor(1.0) // rotations
-                    .velocityConversionFactor(1.0 / 60.0); // rotations per second (will be converted to RPM elsewhere)
+                    .velocityConversionFactor(1.0); // RPM (default SparkFlex units — matches all RPM comparisons)
 
             followerConfig
                     .inverted(true) // Follower is physically inverted

@@ -13,10 +13,12 @@ import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
 import frc.robot.subsystems.LauncherSubsystem;
 import frc.robot.subsystems.IntakeSubsystemProfiled;
+import frc.robot.subsystems.IndexerSubsystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 
 /*
  * This class is where the bulk of the robot should be declared.  Since Command-based is a
@@ -30,6 +32,7 @@ public class RobotContainer {
   private final VisionSubsystem m_vision = new VisionSubsystem();
   private final LauncherSubsystem m_launcher = new LauncherSubsystem();
   private final IntakeSubsystemProfiled m_intake = new IntakeSubsystemProfiled();
+  private final IndexerSubsystem m_indexer = new IndexerSubsystem();
 
   // The autonomous selector
   private final AutoSelector m_autoSelector = new AutoSelector(m_robotDrive);
@@ -47,6 +50,9 @@ public class RobotContainer {
   public RobotContainer() {
     // Initialize dashboard controls
     SmartDashboard.putNumber("Speed Multiplier", 1.0);
+
+    // Wire up indexer to launcher for automatic feeding
+    m_launcher.setIndexer(m_indexer);
 
     // Configure the button bindings
     configureButtonBindings();
@@ -96,6 +102,20 @@ public class RobotContainer {
             },
             m_intake));
 
+    // Y button: SPin indexer and feeder motors 
+    new JoystickButton(m_driverController, XboxController.Button.kY.value)
+        .onTrue(new InstantCommand(
+            () -> {
+              m_indexer.run();
+              m_launcher.runFeeder();
+            },
+            m_indexer))
+        .onFalse(new InstantCommand(
+            () -> {
+              m_indexer.stop();
+              m_launcher.stopFeeder();
+            },
+            m_indexer));
     // A button: Auto heading control for collecting fuel (toggle)
     // TODO: Implement auto heading control command for fuel collection
     // For now, placeholder - replace with actual command when available
@@ -121,8 +141,9 @@ public class RobotContainer {
             },
             m_intake));
 
-    // RT button (button 10): Intake reverse (hold)
-    new JoystickButton(m_driverController, 10)  // Right Trigger button ID
+    // RT (Right Trigger) - Analog axis 3: Intake reverse (hold)
+    // Triggers are analog (0-1), not digital buttons
+    new Trigger(() -> m_driverController.getRightTriggerAxis() > 0.1)
         .onTrue(new InstantCommand(
             () -> m_intake.reverseRollers(),
             m_intake))
@@ -130,10 +151,14 @@ public class RobotContainer {
             () -> m_intake.stopRollers(),
             m_intake));
 
-    // LT button (button 9): Shoot (hold) - shoots using preset RPM
-    // TODO: Determine which shooter preset to use (short or long)
-    // For now using shootShort as default
-    new JoystickButton(m_driverController, 9)  // Left Trigger button ID
+    // LB button: Interrupt intake position controller (safety stop for intake arm)
+    new JoystickButton(m_driverController, XboxController.Button.kLeftBumper.value)
+        .onTrue(new InstantCommand(
+            () -> m_intake.stop(),  // Stops all intake control (pivot + rollers)
+            m_intake));
+
+    // LT (Left Trigger): Shoot (hold) - spins up shooter, feeds + indexes when at target RPM
+    new Trigger(() -> m_driverController.getLeftTriggerAxis() > 0.1)
         .onTrue(new InstantCommand(
             () -> m_launcher.shootShort(),
             m_launcher))

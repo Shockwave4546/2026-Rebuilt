@@ -55,6 +55,9 @@ public class LauncherSubsystem extends SubsystemBase {
     /** Whether only the shooter wheels are spinning (no feeder). */
     private boolean m_isSpinningUp = false;
 
+    /** Whether the feeder is running independently (no shooter). */
+    private boolean m_isFeederRunning = false;
+
     /** Target RPM read from SmartDashboard each loop. */
     private double m_targetRpm = LauncherConstants.kShooterTargetRpm;
 
@@ -63,6 +66,9 @@ public class LauncherSubsystem extends SubsystemBase {
 
     /** Adjustable RPM for long-distance shots (tuned during matches). */
     private double m_longRpm = LauncherConstants.kShooterLongRpm;
+
+    /** Reference to indexer subsystem for automatic feeding when at target RPM. */
+    private IndexerSubsystem m_indexer = null;
 
     // -------------------------------------------------------------------------
     // Constructor
@@ -119,19 +125,28 @@ public class LauncherSubsystem extends SubsystemBase {
         m_longRpm  = SmartDashboard.getNumber("Launcher/Long Shot RPM",  LauncherConstants.kShooterLongRpm);
 
         if (m_isRunning) {
-            // Feeder: open-loop voltage control
-            m_feederMotor.setVoltage(LauncherConstants.kFeederVoltage);
-            // Shooter: FF + P computed on roboRIO, sent as plain voltage — REV firmware
-            // never runs its own velocity loop so it can't enter the violet idle state.
+            // Shooter: always spins up when commanded
             double voltage = m_shooterFF.calculate(m_targetRpm)
                            + m_shooterPID.calculate(m_shooterEncoder.getVelocity(), m_targetRpm);
             m_shooterLeader.setVoltage(voltage);
+
+            // Feeder (50) and indexer (40) only engage once shooter is at target RPM
+            if (isAtTargetRpm()) {
+                m_feederMotor.setVoltage(LauncherConstants.kFeederVoltage);
+                if (m_indexer != null) m_indexer.run();
+            } else {
+                m_feederMotor.stopMotor();
+            }
         } else if (m_isSpinningUp) {
             // Shooter only — feeder idles/coasts
             m_feederMotor.stopMotor();
             double voltage = m_shooterFF.calculate(m_targetRpm)
                            + m_shooterPID.calculate(m_shooterEncoder.getVelocity(), m_targetRpm);
             m_shooterLeader.setVoltage(voltage);
+        } else if (m_isFeederRunning) {
+            // Feeder only — shooter stays off
+            m_feederMotor.setVoltage(LauncherConstants.kFeederVoltage);
+            m_shooterLeader.stopMotor();
         } else {
             // stopMotor() puts the controller into idle — respects IdleMode.kCoast
             m_feederMotor.stopMotor();
@@ -150,6 +165,13 @@ public class LauncherSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("Launcher/Feeder Current (A)",  m_feederMotor.getOutputCurrent());
         SmartDashboard.putBoolean("Launcher/Running",            m_isRunning);
         SmartDashboard.putBoolean("Launcher/Spinning Up",        m_isSpinningUp);
+        
+        // Debug: indexer status
+        SmartDashboard.putBoolean("Launcher/Indexer Connected", m_indexer != null);
+        if (m_indexer != null) {
+            SmartDashboard.putBoolean("Launcher/Indexer Running (from Launcher)", m_indexer.isRunning());
+            SmartDashboard.putBoolean("Launcher/Should Start Indexer", m_isRunning && isAtTargetRpm());
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -162,6 +184,7 @@ public class LauncherSubsystem extends SubsystemBase {
     public void runLauncher() {
         m_isRunning = true;
         m_isSpinningUp = false;
+        m_isFeederRunning = false;
     }
 
     /**
@@ -170,6 +193,24 @@ public class LauncherSubsystem extends SubsystemBase {
     public void stopLauncher() {
         m_isRunning = false;
         m_isSpinningUp = false;
+        m_isFeederRunning = false;
+        if (m_indexer != null) m_indexer.stop();
+    }
+
+    /**
+     * Run only the feeder motor independently (no shooter).
+     */
+    public void runFeeder() {
+        m_isRunning = false;
+        m_isSpinningUp = false;
+        m_isFeederRunning = true;
+    }
+
+    /**
+     * Stop the feeder when running independently.
+     */
+    public void stopFeeder() {
+        m_isFeederRunning = false;
     }
 
     /**
@@ -179,6 +220,7 @@ public class LauncherSubsystem extends SubsystemBase {
     public void spinUpShooter() {
         m_isRunning = false;
         m_isSpinningUp = true;
+        m_isFeederRunning = false;
     }
 
     /**
@@ -202,6 +244,14 @@ public class LauncherSubsystem extends SubsystemBase {
      */
     public boolean isRunning() {
         return m_isRunning;
+    }
+
+    /**
+     * Sets a reference to the indexer subsystem for automatic feeding.
+     * Call this from RobotContainer during setup.
+     */
+    public void setIndexer(IndexerSubsystem indexer) {
+        m_indexer = indexer;
     }
 
     /**

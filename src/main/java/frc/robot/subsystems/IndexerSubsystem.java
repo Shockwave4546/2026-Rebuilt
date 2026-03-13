@@ -25,6 +25,7 @@ public class IndexerSubsystem extends SubsystemBase {
     private final SparkMax m_indexerMotor;
 
     private boolean m_isRunning = false;
+    private boolean m_isReversing = false;
 
     public IndexerSubsystem() {
         m_indexerMotor = new SparkMax(IndexerConstants.kIndexerMotorCanId, MotorType.kBrushless);
@@ -38,15 +39,19 @@ public class IndexerSubsystem extends SubsystemBase {
     public void periodic() {
         if (m_isRunning) {
             m_indexerMotor.setVoltage(IndexerConstants.kIndexerVoltage);
+        } else if (m_isReversing) {
+            m_indexerMotor.setVoltage(-IndexerConstants.kIndexerVoltage);
         } else {
             m_indexerMotor.stopMotor();
         }
 
         // Dashboard telemetry
         SmartDashboard.putBoolean("Indexer/Running", m_isRunning);
+        SmartDashboard.putBoolean("Indexer/Reversing", m_isReversing);
         SmartDashboard.putNumber("Indexer/Applied Voltage (V)", 
                 m_indexerMotor.getAppliedOutput() * 12.0);
         SmartDashboard.putNumber("Indexer/Current (A)", m_indexerMotor.getOutputCurrent());
+        SmartDashboard.putNumber("Indexer/Motor Output %", m_indexerMotor.getAppliedOutput() * 100.0);
     }
 
     /**
@@ -54,6 +59,15 @@ public class IndexerSubsystem extends SubsystemBase {
      */
     public void run() {
         m_isRunning = true;
+        m_isReversing = false;
+    }
+
+    /**
+     * Run the indexer in reverse at full voltage (12V).
+     */
+    public void runReverse() {
+        m_isRunning = false;
+        m_isReversing = true;
     }
 
     /**
@@ -61,6 +75,7 @@ public class IndexerSubsystem extends SubsystemBase {
      */
     public void stop() {
         m_isRunning = false;
+        m_isReversing = false;
     }
 
     /**

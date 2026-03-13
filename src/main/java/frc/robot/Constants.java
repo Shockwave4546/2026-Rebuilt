@@ -165,19 +165,19 @@ public final class Constants {
     public static final boolean kIntakePivotEncoderInverted = false;
 
     // Position limits (in rotations from the absolute encoder)
-    // Deployed (down) ≈ 0.52, Weightless ≈ 0.66, Retracted (up) ≈ 0.726
+    // Deployed (down) ≈ 0.079, No gravity ≈ 0.23, Retracted (up) ≈ 0.292
     // Encoder increases as arm rises; min = deployed, max = retracted
-    public static final double kIntakePivotMinPosition = 0.50;   // rotations (deployed, hard limit)
-    public static final double kIntakePivotMaxPosition = 0.75;   // rotations (retracted, hard limit)
+    public static final double kIntakePivotMinPosition = 0.05;   // rotations (deployed, hard limit)
+    public static final double kIntakePivotMaxPosition = 0.35;   // rotations (retracted, hard limit)
 
     // Named setpoints
-    public static final double kIntakePivotDeployedPosition  = 0.52; // rotations
-    public static final double kIntakePivotWeightlessPosition = 0.66; // rotations
-    public static final double kIntakePivotRetractedPosition = 0.726; // rotations
+    public static final double kIntakePivotDeployedPosition  = 0.079; // rotations
+    public static final double kIntakePivotWeightlessPosition = 0.23; // rotations
+    public static final double kIntakePivotRetractedPosition = 0.292; // rotations
 
     // Threshold for deployed/retracted state detection (rotations)
-    public static final double kIntakePivotDeployedThreshold  = 0.59; // deployed if < 0.59
-    public static final double kIntakePivotRetractedThreshold = 0.69; // retracted if > 0.69
+    public static final double kIntakePivotDeployedThreshold  = 0.15; // deployed if < 0.15
+    public static final double kIntakePivotRetractedThreshold = 0.25; // retracted if > 0.25
 
     // MAXMotion PID gains (slot 0, encoder units = rotations)
     // kP: volts per rotation of error; kD dampen oscillations at setpoint
@@ -206,7 +206,7 @@ public final class Constants {
     public static final double kIntakePivotMaxOutput =  1.0;
 
     // Current limits (Amps)
-    public static final int kIntakePivotCurrentLimit  = 80;  // NEO on pivot
+    public static final int kIntakePivotCurrentLimit  = 40;  // NEO on pivot
     public static final int kIntakeRollerCurrentLimit = 20;  // NEO 550 on roller
 
     // Roller speed (duty cycle, 0-1)
@@ -237,7 +237,7 @@ public final class Constants {
     // kP: duty-cycle per rotation of position error.
     // kD: damps velocity overshoot near the setpoint.
     // Start conservative; increase kP until responsive, then add kD to kill bounce.
-    public static final double kP = 6.0;
+    public static final double kP = 3.0;
     public static final double kI = 0.0;
     public static final double kD = 0.3;
 
@@ -249,7 +249,7 @@ public final class Constants {
     // kV: velocity feedforward — duty cycle per (rot/s); keeps profile tracking tight.
     // kA: acceleration feedforward — leave 0 for a lightweight arm.
     public static final double kS = 0.01;
-    public static final double kG = 0.32; // Negated: test sign direction for gravity compensation
+    public static final double kG = 0.05; // Negated: test sign direction for gravity compensation
     public static final double kV = 0.01;
     public static final double kA = 0.01;
 
@@ -257,9 +257,9 @@ public final class Constants {
     // so that ArmFeedforward's cos(θ) term is geometrically correct.
     //
     // The arm passes through three characteristic encoder positions:
-    //   kGravityPeakPosition  (0.52): arm is deployed (down) → maximum gravity torque, cos(θ) = 1
-    //   kGravityZeroPosition  (0.66): arm is weightless (horizontal-ish) → zero gravity torque, cos(θ) = 0
-    //   gravity peak again    (0.80): arm is retracted (up) → gravity reverses, cos(θ) = −1
+    //   kGravityPeakPosition  (0.079): arm is deployed (down) → maximum gravity torque, cos(θ) = 1
+    //   kGravityZeroPosition  (0.23): arm is weightless (horizontal-ish) → zero gravity torque, cos(θ) = 0
+    //   gravity peak again    (0.381): arm is retracted (up) → gravity reverses, cos(θ) = −1
     //
     // The conversion formula used in IntakeSubsystemProfiled:
     //   angleRad = (encoderPos − kGravityZeroPosition)
@@ -268,8 +268,8 @@ public final class Constants {
     //
     // This produces:  0 rad at the peak (gravity max), π/2 rad at vertical (gravity zero), π rad on the far side —
     // exactly what ArmFeedforward expects for its cos(θ) calculation.
-    public static final double kGravityPeakPosition = 0.52; // rotations (arm deployed, gravity max)
-    public static final double kGravityZeroPosition = 0.66; // rotations (arm weightless, gravity zero)
+    public static final double kGravityPeakPosition = 0.079; // rotations (arm deployed, gravity max)
+    public static final double kGravityZeroPosition = 0.23; // rotations (arm weightless, gravity zero)
 
     // isAtTarget() tolerance (rotations).
     public static final double kTolerance = 0.017; // ~6 degrees
@@ -343,10 +343,10 @@ public final class Constants {
     public static final int kIndexerMotorCanId = 40; // NEO 1.1 on SparkMax
 
     // Motor inversion
-    public static final boolean kIndexerMotorInverted = false;
+    public static final boolean kIndexerMotorInverted = true;
 
     // Current limit (Amps)
-    public static final int kIndexerMotorCurrentLimit = 20; // NEO 1.1
+    public static final int kIndexerMotorCurrentLimit = 30; // NEO 1.1
 
     // Indexer voltage (open-loop, 12V for full speed)
     public static final double kIndexerVoltage = 12.0; // volts
