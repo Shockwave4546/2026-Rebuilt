@@ -149,12 +149,11 @@ public class DriveSubsystem extends SubsystemBase {
    *                      field.
    */
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
-    // Apply speed multiplier
-    double effectiveMultiplier = m_speedMultiplier;
-    
-    xSpeed *= effectiveMultiplier;
-    ySpeed *= effectiveMultiplier;
-    rot *= effectiveMultiplier;
+    // Apply speed multiplier to translation only — rotation is intentionally excluded
+    // so heading controllers (CoordinatedHeadingCommand, HoldHeadingCommand) retain
+    // full authority regardless of the driver-selected speed limit.
+    xSpeed *= m_speedMultiplier;
+    ySpeed *= m_speedMultiplier;
     
     // Convert the commanded speeds into the correct units for the drivetrain
     double xSpeedDelivered = xSpeed * DriveConstants.kMaxSpeedMetersPerSecond;
