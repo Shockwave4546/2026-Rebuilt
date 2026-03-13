@@ -58,6 +58,9 @@ public class LauncherSubsystem extends SubsystemBase {
     /** Whether the feeder is running independently (no shooter). */
     private boolean m_isFeederRunning = false;
 
+    /** Whether the feeder is running in reverse independently. */
+    private boolean m_isFeederReversing = false;
+
     /** Target RPM read from SmartDashboard each loop. */
     private double m_targetRpm = LauncherConstants.kShooterTargetRpm;
 
@@ -147,6 +150,10 @@ public class LauncherSubsystem extends SubsystemBase {
             // Feeder only — shooter stays off
             m_feederMotor.setVoltage(LauncherConstants.kFeederVoltage);
             m_shooterLeader.stopMotor();
+        } else if (m_isFeederReversing) {
+            // Feeder reverse only — shooter stays off
+            m_feederMotor.setVoltage(-LauncherConstants.kFeederVoltage);
+            m_shooterLeader.stopMotor();
         } else {
             // stopMotor() puts the controller into idle — respects IdleMode.kCoast
             m_feederMotor.stopMotor();
@@ -194,6 +201,7 @@ public class LauncherSubsystem extends SubsystemBase {
         m_isRunning = false;
         m_isSpinningUp = false;
         m_isFeederRunning = false;
+        m_isFeederReversing = false;
         if (m_indexer != null) m_indexer.stop();
     }
 
@@ -203,7 +211,18 @@ public class LauncherSubsystem extends SubsystemBase {
     public void runFeeder() {
         m_isRunning = false;
         m_isSpinningUp = false;
+        m_isFeederReversing = false;
         m_isFeederRunning = true;
+    }
+
+    /**
+     * Run the feeder in reverse independently (no shooter). Useful for unjamming.
+     */
+    public void runFeederReverse() {
+        m_isRunning = false;
+        m_isSpinningUp = false;
+        m_isFeederRunning = false;
+        m_isFeederReversing = true;
     }
 
     /**
@@ -211,6 +230,7 @@ public class LauncherSubsystem extends SubsystemBase {
      */
     public void stopFeeder() {
         m_isFeederRunning = false;
+        m_isFeederReversing = false;
     }
 
     /**

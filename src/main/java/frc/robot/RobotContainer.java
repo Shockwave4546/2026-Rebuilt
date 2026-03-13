@@ -8,6 +8,8 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.OIConstants;
+import frc.robot.commands.CoordinatedHeadingCommand;
+import frc.robot.commands.HoldHeadingCommand;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
@@ -102,31 +104,34 @@ public class RobotContainer {
             },
             m_intake));
 
-    // Y button: SPin indexer and feeder motors 
+    // Y button: Reverse indexer + feeder (hold to unjam)
     new JoystickButton(m_driverController, XboxController.Button.kY.value)
         .onTrue(new InstantCommand(
             () -> {
-              m_indexer.run();
-              m_launcher.runFeeder();
+              m_indexer.runReverse();
+              m_launcher.runFeederReverse();
             },
-            m_indexer))
+            m_indexer, m_launcher))
         .onFalse(new InstantCommand(
             () -> {
               m_indexer.stop();
               m_launcher.stopFeeder();
             },
-            m_indexer));
-    // A button: Auto heading control for collecting fuel (toggle)
-    // TODO: Implement auto heading control command for fuel collection
-    // For now, placeholder - replace with actual command when available
-    // new JoystickButton(m_driverController, XboxController.Button.kA.value)
-    //     .whileTrue(new AlignToFuelCommand(m_robotDrive, m_vision));
+            m_indexer, m_launcher));
+    // A button: Coordinated heading (hold) — intake faces direction of travel
+    new JoystickButton(m_driverController, XboxController.Button.kA.value)
+        .whileTrue(new CoordinatedHeadingCommand(
+            m_robotDrive,
+            () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband)),
+            () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband)),
+            () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband))));
 
     // B button: Hold 45 degrees yaw
-    // TODO: Implement 45 degree yaw hold command
-    // For now, placeholder - replace with actual command when available
-    // new JoystickButton(m_driverController, XboxController.Button.kB.value)
-    //     .whileTrue(new HoldYawCommand(m_robotDrive, 45.0));
+    new JoystickButton(m_driverController, XboxController.Button.kB.value)
+         .whileTrue(new HoldHeadingCommand(m_robotDrive,
+             () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband),
+             () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband),
+             45.0));
 
     // RB button: Toggle intake rollers on/off
     new JoystickButton(m_driverController, XboxController.Button.kRightBumper.value)
