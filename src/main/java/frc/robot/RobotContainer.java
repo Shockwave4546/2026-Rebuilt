@@ -9,7 +9,7 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.OIConstants;
 import frc.robot.commands.CoordinatedHeadingCommand;
-import frc.robot.commands.HoldHeadingCommand;
+import frc.robot.commands.SnapHeadingCommand;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
@@ -126,12 +126,14 @@ public class RobotContainer {
             () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband)),
             () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband))));
 
-    // B button: Hold 45 degrees yaw
+    // B button: Snap to closest 45° angle, then fine-tune with right stick quadrants
     new JoystickButton(m_driverController, XboxController.Button.kB.value)
-         .whileTrue(new HoldHeadingCommand(m_robotDrive,
-             () -> -MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband),
-             () -> -MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband),
-             45.0));
+         .whileTrue(new SnapHeadingCommand(
+             m_robotDrive,
+             () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband)),
+             () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband)),
+             () -> m_driverController.getRightX(),
+             () -> m_driverController.getRightY()));
 
     // RB button: Toggle intake rollers on/off
     new JoystickButton(m_driverController, XboxController.Button.kRightBumper.value)
