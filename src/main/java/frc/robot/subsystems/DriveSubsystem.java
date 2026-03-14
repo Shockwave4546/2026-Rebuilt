@@ -42,8 +42,8 @@ public class DriveSubsystem extends SubsystemBase {
       DriveConstants.kRearRightTurningCanId,
       DriveConstants.kBackRightChassisAngularOffset);
 
-  // The gyro sensor
-  private final Navx m_gyro = new Navx(DriveConstants.kNavxPort, 100);
+  // The gyro sensor (USB1 port)
+  private final Navx m_gyro = new Navx(Navx.Port.kUSB1, 100);
 
   // Odometry class for tracking robot pose
   private SwerveDriveOdometry m_odometry;
