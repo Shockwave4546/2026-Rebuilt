@@ -22,7 +22,7 @@ public class BackUpAuto extends SequentialCommandGroup {
     addCommands(
         new InstantCommand(() -> System.out.println("Back Up Auto started")),
         // Drive backward 1 meter at 50% speed
-        new DriveToPositionCommand(drive, -1.0, 0.05),
+        new DriveToPositionCommand(drive, -0.5, 0.05),
         // Stop
         new InstantCommand(() -> drive.drive(0, 0, 0, false)));
   }

@@ -37,7 +37,7 @@ public class RobotContainer {
   private final IndexerSubsystem m_indexer = new IndexerSubsystem();
 
   // The autonomous selector
-  private final AutoSelector m_autoSelector = new AutoSelector(m_robotDrive);
+  private final AutoSelector m_autoSelector = new AutoSelector(m_robotDrive, m_launcher, m_indexer);
 
   // The driver's controller
   XboxController m_driverController = new XboxController(OIConstants.kDriverControllerPort);
@@ -168,6 +168,15 @@ public class RobotContainer {
     new Trigger(() -> m_driverController.getLeftTriggerAxis() > 0.1)
         .onTrue(new InstantCommand(
             () -> m_launcher.shootShort(),
+            m_launcher))
+        .onFalse(new InstantCommand(
+            () -> m_launcher.stopLauncher(),
+            m_launcher));
+
+    // D-Pad Up: Shoot long distance (hold)
+    new Trigger(() -> m_driverController.getPOV() == 0)
+        .onTrue(new InstantCommand(
+            () -> m_launcher.shootLong(),
             m_launcher))
         .onFalse(new InstantCommand(
             () -> m_launcher.stopLauncher(),
