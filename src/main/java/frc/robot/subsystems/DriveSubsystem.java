@@ -84,7 +84,7 @@ public class DriveSubsystem extends SubsystemBase {
     // Initialize odometry after gyro is ready
     m_odometry = new SwerveDriveOdometry(
         DriveConstants.kDriveKinematics,
-        Rotation2d.fromDegrees(m_gyro.getAngle().in(Degrees)),
+        Rotation2d.fromDegrees(getGyroAngleSafe()),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -97,7 +97,7 @@ public class DriveSubsystem extends SubsystemBase {
   public void periodic() {
     // Update the odometry in the periodic block
     m_odometry.update(
-        Rotation2d.fromDegrees(m_gyro.getAngle().in(Degrees)),
+        Rotation2d.fromDegrees(getGyroAngleSafe()),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -129,7 +129,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void resetOdometry(Pose2d pose) {
     m_odometry.resetPosition(
-        Rotation2d.fromDegrees(m_gyro.getAngle().in(Degrees)),
+        Rotation2d.fromDegrees(getGyroAngleSafe()),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -163,7 +163,7 @@ public class DriveSubsystem extends SubsystemBase {
     var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(
         fieldRelative
             ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered,
-                Rotation2d.fromDegrees(m_gyro.getAngle().in(Degrees)))
+                Rotation2d.fromDegrees(getGyroAngleSafe()))
             : new ChassisSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered));
     SwerveDriveKinematics.desaturateWheelSpeeds(
         swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
@@ -211,12 +211,40 @@ public class DriveSubsystem extends SubsystemBase {
   }
 
   /**
+   * Safely gets the gyro angle in degrees with null-safety check.
+   * Returns 0.0 if the gyro angle is null, throws an exception, or is NaN/Infinite.
+   *
+   * @return the gyro angle in degrees, or 0.0 if unavailable
+   */
+  private double getGyroAngleSafe() {
+    try {
+      var angle = m_gyro.getAngle();
+      if (angle == null) {
+        return 0.0;
+      }
+      double degrees = angle.in(Degrees);
+      return Double.isFinite(degrees) ? degrees : 0.0;
+    } catch (Exception e) {
+      return 0.0;
+    }
+  }
+
+  /**
    * Returns the heading of the robot.
    *
    * @return the robot's heading in degrees, from -180 to 180
    */
   public double getHeading() {
-    return m_gyro.getAngle().in(Degrees);
+    try {
+      var angle = m_gyro.getAngle();
+      if (angle == null) {
+        return 0.0;
+      }
+      double degrees = angle.in(Degrees);
+      return Double.isFinite(degrees) ? degrees : 0.0;
+    } catch (Exception e) {
+      return 0.0;
+    }
   }
 
   /**
