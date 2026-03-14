@@ -74,7 +74,7 @@ public final class Constants {
     public static final int kDrivingMotorPinionTeeth = 14;
 
     // Motor current limits (in Amps)
-    public static final int kDrivingMotorCurrentLimit = 35;
+    public static final int kDrivingMotorCurrentLimit = 33;
     public static final int kTurningMotorCurrentLimit = 20;
 
     // Calculations required for driving motor conversion factors and feed forward
@@ -312,8 +312,8 @@ public final class Constants {
     public static final double kD_Shooter = 0.0;
 
     // Target shooter speeds (RPM) — two presets for short and long distance shots
-    public static final double kShooterTargetRpm = 2775.0;  // Default (for backwards compatibility)
-    public static final double kShooterShortRpm = 2775.0;   // Close-range shot
+    public static final double kShooterTargetRpm = 2900.0;  // Default (for backwards compatibility)
+    public static final double kShooterShortRpm = 2900.0;   // Close-range shot
     public static final double kShooterLongRpm  = 3450.0;   // Long-range shot
 
     // Tolerance for "at speed" check (RPM)

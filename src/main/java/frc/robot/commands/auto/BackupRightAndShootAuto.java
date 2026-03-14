@@ -23,7 +23,7 @@ import frc.robot.subsystems.IndexerSubsystem;
  * 6. Shoot for 2.5 more seconds
  * 7. Stop
  */
-public class BackUpAndShootAuto extends SequentialCommandGroup {
+public class BackupRightAndShootAuto extends SequentialCommandGroup {
   /**
    * Creates a new BackUpAndShootAuto command group.
    *
@@ -31,17 +31,17 @@ public class BackUpAndShootAuto extends SequentialCommandGroup {
    * @param launcher the launcher subsystem
    * @param indexer the indexer subsystem
    */
-  public BackUpAndShootAuto(DriveSubsystem drive, LauncherSubsystem launcher, IndexerSubsystem indexer) {
+  public BackupRightAndShootAuto(DriveSubsystem drive, LauncherSubsystem launcher, IndexerSubsystem indexer) {
     addCommands(
         new InstantCommand(() -> System.out.println("Back Up and Shoot Auto started")),
 
         // Back up 0.25 meters at 5% speed
-        new DriveToPositionCommand(drive, -0.5, 0.1),
+        new DriveToPositionCommand(drive, -1.33, 0.1),
 
         // First shoot cycle: 2.5 seconds
         new InstantCommand(() -> {
           System.out.println("Starting first shoot cycle (3.5s)");
-          launcher.shootShort();
+          launcher.shootLong();
         }),
         new WaitCommand(3.5),
         new InstantCommand(() -> launcher.stopLauncher()),
@@ -53,7 +53,7 @@ public class BackUpAndShootAuto extends SequentialCommandGroup {
         // Second shoot cycle: 2.5 seconds
         new InstantCommand(() -> {
           System.out.println("Starting second shoot cycle (3.5s)");
-          launcher.shootShort();
+          launcher.shootLong();
         }),
         new WaitCommand(3.5),
         new InstantCommand(() -> launcher.stopLauncher()),
@@ -77,7 +77,7 @@ public class BackUpAndShootAuto extends SequentialCommandGroup {
         // Third shoot cycle: 2.5 seconds
         new InstantCommand(() -> {
           System.out.println("Starting third shoot cycle (4s)");
-          launcher.shootShort();
+          launcher.shootLong();
         }),
         new WaitCommand(4),
         new InstantCommand(() -> launcher.stopLauncher()),
@@ -101,7 +101,7 @@ public class BackUpAndShootAuto extends SequentialCommandGroup {
         // Third shoot cycle: 2.5 seconds
         new InstantCommand(() -> {
           System.out.println("Starting third shoot cycle (4s)");
-          launcher.shootShort();
+          launcher.shootLong();
         }),
         new WaitCommand(4),
         new InstantCommand(() -> launcher.stopLauncher()),

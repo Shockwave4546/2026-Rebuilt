@@ -9,6 +9,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.commands.auto.BackUpAuto;
 import frc.robot.commands.auto.BackUpAndShootAuto;
+import frc.robot.commands.auto.BackupRightAndShootAuto;
 import frc.robot.commands.auto.DoNothingAuto;
 import frc.robot.commands.auto.RotateAuto;
 import frc.robot.commands.auto.SimpleDriveAuto;
@@ -46,6 +47,7 @@ public class AutoSelector {
     m_autoChooser.addOption("Back Up", new BackUpAuto(m_drive));
     m_autoChooser.addOption("Back Up and Shoot", new BackUpAndShootAuto(m_drive, m_launcher, m_indexer));
     m_autoChooser.addOption("Rotate 90 Degrees", new RotateAuto(m_drive));
+    m_autoChooser.addOption("BackupRightAndShootAuto", new BackupRightAndShootAuto(m_drive, m_launcher, m_indexer));
 
     // Put the chooser on the SmartDashboard
     SmartDashboard.putData("Auto Selector", m_autoChooser);

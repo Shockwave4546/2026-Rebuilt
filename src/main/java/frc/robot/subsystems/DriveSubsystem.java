@@ -43,7 +43,7 @@ public class DriveSubsystem extends SubsystemBase {
       DriveConstants.kBackRightChassisAngularOffset);
 
   // The gyro sensor
-  private final Navx m_gyro = new Navx(DriveConstants.kNavxPort, 100);
+  private final Navx m_gyro = new Navx(DriveConstants.kNavxPort, 50);
 
   // Odometry class for tracking robot pose
   private SwerveDriveOdometry m_odometry;
@@ -58,7 +58,7 @@ public class DriveSubsystem extends SubsystemBase {
 
     // Give navx a chance to boot up
     try {
-      Thread.sleep(1000);
+      Thread.sleep(500);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -70,7 +70,7 @@ public class DriveSubsystem extends SubsystemBase {
     // enableOptionalMessages(yaw, angle, quat6d, quat9d, algoStates, pitchRoll, angularVel, linearAccel, compass, temperature)
     m_gyro.enableOptionalMessages(
         true,   // yaw (ENABLED - needed for odometry)
-        false,  // angle
+        true,  // angle
         true,   // quat6d
         false,  // quat9d
         false,  // algoStates
@@ -84,7 +84,7 @@ public class DriveSubsystem extends SubsystemBase {
     // Initialize odometry after gyro is ready
     m_odometry = new SwerveDriveOdometry(
         DriveConstants.kDriveKinematics,
-        Rotation2d.fromDegrees(m_gyro.getYaw().in(Degrees)),
+        Rotation2d.fromDegrees(m_gyro.getAngle().in(Degrees)),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -97,7 +97,7 @@ public class DriveSubsystem extends SubsystemBase {
   public void periodic() {
     // Update the odometry in the periodic block
     m_odometry.update(
-        Rotation2d.fromDegrees(m_gyro.getYaw().in(Degrees)),
+        Rotation2d.fromDegrees(m_gyro.getAngle().in(Degrees)),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -129,7 +129,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void resetOdometry(Pose2d pose) {
     m_odometry.resetPosition(
-        Rotation2d.fromDegrees(m_gyro.getYaw().in(Degrees)),
+        Rotation2d.fromDegrees(m_gyro.getAngle().in(Degrees)),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -163,7 +163,7 @@ public class DriveSubsystem extends SubsystemBase {
     var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(
         fieldRelative
             ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered,
-                Rotation2d.fromDegrees(m_gyro.getYaw().in(Degrees)))
+                Rotation2d.fromDegrees(m_gyro.getAngle().in(Degrees)))
             : new ChassisSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered));
     SwerveDriveKinematics.desaturateWheelSpeeds(
         swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
@@ -216,7 +216,7 @@ public class DriveSubsystem extends SubsystemBase {
    * @return the robot's heading in degrees, from -180 to 180
    */
   public double getHeading() {
-    return m_gyro.getYaw().in(Degrees);
+    return m_gyro.getAngle().in(Degrees);
   }
 
   /**
