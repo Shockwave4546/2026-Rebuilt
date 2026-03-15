@@ -56,8 +56,8 @@ public final class Constants {
     public static final int kRearLeftTurningCanId = 22;
     public static final int kFrontLeftTurningCanId = 23;
 
-    // NavX Gyro Port
-    public static final int kNavxPort = 0;
+    // Pigeon2 Gyro CAN ID
+    public static final int kGyroCanId = 0;
 
     public static final boolean kGyroReversed = false;
 
@@ -176,8 +176,8 @@ public final class Constants {
     public static final double kIntakePivotRetractedPosition = 0.292; // rotations
 
     // Threshold for deployed/retracted state detection (rotations)
-    public static final double kIntakePivotDeployedThreshold  = 0.15; // deployed if < 0.15
-    public static final double kIntakePivotRetractedThreshold = 0.25; // retracted if > 0.25
+    public static final double kIntakePivotDeployedThreshold  = kIntakePivotDeployedPosition + 0.05;
+    public static final double kIntakePivotRetractedThreshold = kIntakePivotRetractedPosition - 0.05;
 
     // MAXMotion PID gains (slot 0, encoder units = rotations)
     // kP: volts per rotation of error; kD dampen oscillations at setpoint

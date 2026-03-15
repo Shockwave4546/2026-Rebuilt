@@ -14,7 +14,8 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import com.studica.frc.Navx;     //import studica navx3
+import com.ctre.phoenix6.hardware.Pigeon2;
+import com.ctre.phoenix6.CANBus;
 import frc.robot.Constants.DriveConstants;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -43,7 +44,7 @@ public class DriveSubsystem extends SubsystemBase {
       DriveConstants.kBackRightChassisAngularOffset);
 
   // The gyro sensor
-  private final Navx m_gyro = new Navx(DriveConstants.kNavxPort, 50);
+  private final Pigeon2 m_pigeon = new Pigeon2(DriveConstants.kGyroCanId, CANBus.roboRIO());
 
   // Odometry class for tracking robot pose
   private SwerveDriveOdometry m_odometry;
@@ -56,30 +57,8 @@ public class DriveSubsystem extends SubsystemBase {
     // Usage reporting for MAXSwerve template
     HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_MaxSwerve);
 
-    // Give navx a chance to boot up
-    try {
-      Thread.sleep(500);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
-    // Zero the navx to set the current heading to 0 degrees
-    m_gyro.resetYaw();
-
-    // Disable most NavX outputs to reduce CAN bus traffic
-    // enableOptionalMessages(yaw, angle, quat6d, quat9d, algoStates, pitchRoll, angularVel, linearAccel, compass, temperature)
-    m_gyro.enableOptionalMessages(
-        true,   // yaw (ENABLED - needed for odometry)
-        true,  // angle
-        true,   // quat6d
-        false,  // quat9d
-        false,  // algoStates
-        true,   // pitchRoll
-        false,  // angularVel
-        false,  // linearAccel
-        false,  // compass (DISABLED - causes drift)
-        false   // temperature
-    );
+    // Configure and zero the Pigeon2 gyro
+    m_pigeon.setYaw(0);
 
     // Initialize odometry after gyro is ready
     m_odometry = new SwerveDriveOdometry(
@@ -207,7 +186,7 @@ public class DriveSubsystem extends SubsystemBase {
 
   /** Zeroes the heading of the robot. */
   public void zeroHeading() {
-    m_gyro.resetYaw();
+    m_pigeon.setYaw(0);
   }
 
   /**
@@ -218,11 +197,11 @@ public class DriveSubsystem extends SubsystemBase {
    */
   private double getGyroAngleSafe() {
     try {
-      var angle = m_gyro.getAngle();
-      if (angle == null) {
+      var yaw = m_pigeon.getYaw();
+      if (yaw == null) {
         return 0.0;
       }
-      double degrees = angle.in(Degrees);
+      double degrees = yaw.getValue().in(Degrees);
       return Double.isFinite(degrees) ? degrees : 0.0;
     } catch (Exception e) {
       return 0.0;
@@ -236,11 +215,11 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public double getHeading() {
     try {
-      var angle = m_gyro.getAngle();
-      if (angle == null) {
+      var yaw = m_pigeon.getYaw();
+      if (yaw == null) {
         return 0.0;
       }
-      double degrees = angle.in(Degrees);
+      double degrees = yaw.getValue().in(Degrees);
       return Double.isFinite(degrees) ? degrees : 0.0;
     } catch (Exception e) {
       return 0.0;
@@ -253,7 +232,16 @@ public class DriveSubsystem extends SubsystemBase {
    * @return The turn rate of the robot, in degrees per second
    */
   public double getTurnRate() {
-    return m_gyro.getAngularVel()[2].in(edu.wpi.first.units.Units.DegreesPerSecond) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+    try {
+      var angVelZ = m_pigeon.getAngularVelocityZWorld();
+      if (angVelZ == null) {
+        return 0.0;
+      }
+      double degreesPerSecond = angVelZ.getValue().in(edu.wpi.first.units.Units.DegreesPerSecond);
+      return Double.isFinite(degreesPerSecond) ? degreesPerSecond * (DriveConstants.kGyroReversed ? -1.0 : 1.0) : 0.0;
+    } catch (Exception e) {
+      return 0.0;
+    }
   }
 
   /**
@@ -262,7 +250,16 @@ public class DriveSubsystem extends SubsystemBase {
    * @return Z angular velocity in degrees per second
    */
   public double getAngularVelocityZ() {
-    return m_gyro.getAngularVel()[2].in(edu.wpi.first.units.Units.DegreesPerSecond) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+    try {
+      var angVelZ = m_pigeon.getAngularVelocityZWorld();
+      if (angVelZ == null) {
+        return 0.0;
+      }
+      double degreesPerSecond = angVelZ.getValue().in(edu.wpi.first.units.Units.DegreesPerSecond);
+      return Double.isFinite(degreesPerSecond) ? degreesPerSecond * (DriveConstants.kGyroReversed ? -1.0 : 1.0) : 0.0;
+    } catch (Exception e) {
+      return 0.0;
+    }
   }
   /**
    * Sets the speed multiplier.

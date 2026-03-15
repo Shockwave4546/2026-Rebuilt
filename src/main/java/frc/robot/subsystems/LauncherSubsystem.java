@@ -140,6 +140,16 @@ public class LauncherSubsystem extends SubsystemBase {
             } else {
                 m_feederMotor.stopMotor();
             }
+
+            //TODO
+            //Auto unjam workflow-
+            //Current based -
+            //If feeder or indexer stalled for >1s
+            //pause .5 reverse .75?
+            //Time based - 
+            //Every 3s of shooting 
+            //.5s stop 1s reverse
+            
         } else if (m_isSpinningUp) {
             // Shooter only — feeder idles/coasts
             m_feederMotor.stopMotor();

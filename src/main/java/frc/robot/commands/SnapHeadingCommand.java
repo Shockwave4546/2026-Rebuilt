@@ -128,7 +128,7 @@ public class SnapHeadingCommand extends Command {
     // Dashboard telemetry
     SmartDashboard.putNumber("SnapHeading/Target", m_targetHeading);
     SmartDashboard.putNumber("SnapHeading/Current", currentHeading);
-    SmartDashboard.putNumber("SnapHeading/Error", m_headingController.getPositionError());
+    SmartDashboard.putNumber("SnapHeading/Error", Math.abs(currentHeading - m_targetHeading));
     SmartDashboard.putNumber("SnapHeading/Rotation Output", rotationOutput);
   }
 
