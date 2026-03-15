@@ -36,7 +36,7 @@ public class BackupRightAndShootAuto extends SequentialCommandGroup {
         new InstantCommand(() -> System.out.println("Back Up and Shoot Auto started")),
 
         // Back up 0.25 meters at 5% speed
-        new DriveToPositionCommand(drive, -1.33, 0.1),
+        new DriveToPositionCommand(drive, -1.0, 0.1),
 
         // First shoot cycle: 2.5 seconds
         new InstantCommand(() -> {
