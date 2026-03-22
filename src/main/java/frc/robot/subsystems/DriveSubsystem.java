@@ -16,6 +16,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.ctre.phoenix6.CANBus;
+import com.ctre.phoenix6.BaseStatusSignal;
 import frc.robot.Constants.DriveConstants;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -59,6 +60,14 @@ public class DriveSubsystem extends SubsystemBase {
 
     // Configure and zero the Pigeon2 gyro
     m_pigeon.setYaw(0);
+    
+    // Set Pigeon2 update frequency to reduce CAN bus load while maintaining odometry accuracy
+    // 100 Hz is standard for FRC swerve drive odometry updates
+    BaseStatusSignal.setUpdateFrequencyForAll(
+        DriveConstants.kGyroUpdateFrequencyHz,
+        m_pigeon.getYaw(),
+        m_pigeon.getAngularVelocityZWorld()
+    );
 
     // Initialize odometry after gyro is ready
     m_odometry = new SwerveDriveOdometry(

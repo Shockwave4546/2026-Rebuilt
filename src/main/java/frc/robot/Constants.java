@@ -57,7 +57,12 @@ public final class Constants {
     public static final int kFrontLeftTurningCanId = 23;
 
     // Pigeon2 Gyro CAN ID
-    public static final int kGyroCanId = 0;
+    public static final int kGyroCanId = 30;
+
+    // Pigeon2 update frequency in Hz (default 100 Hz from factory)
+    // Higher = more frequent updates but more CAN bus load
+    // 100 Hz is standard for swerve odometry
+    public static final double kGyroUpdateFrequencyHz = 100.0;
 
     public static final boolean kGyroReversed = false;
 
@@ -156,10 +161,13 @@ public final class Constants {
     // Motor CAN IDs
     public static final int kIntakePivotMotorCanId = 30;
     public static final int kIntakeRollerMotorCanId = 31;
+    public static final int kIntakeRollerFollowerMotorCanId = 32;
 
     // Motor inversion
-    public static final boolean kIntakePivotMotorInverted = false;
+    public static final boolean kIntakePivotMotorInverted = true;
     public static final boolean kIntakeRollerMotorInverted = true;
+    // Follower is inverted relative to leader (mounted facing opposite direction)
+    public static final boolean kIntakeRollerFollowerMotorInverted = false;
 
     // Encoder configuration (REV Through-Bore Encoder V2 on SparkMax)
     public static final boolean kIntakePivotEncoderInverted = false;
