@@ -56,6 +56,8 @@ public class RobotContainer {
 
     // Wire up indexer to launcher for automatic feeding
     m_launcher.setIndexer(m_indexer);
+  // Wire up intake to launcher so we can auto-wiggle while shooting
+  m_launcher.setIntake(m_intake);
 
     // Configure the button bindings
     configureButtonBindings();

@@ -14,9 +14,13 @@ import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Configs;
 import frc.robot.Constants.LauncherConstants;
+import frc.robot.commands.WiggleIntakeCommand;
+import frc.robot.subsystems.IntakeSubsystemProfiled;
 import frc.robot.util.TelemetryRateLimiter;
 
 /**
@@ -73,6 +77,12 @@ public class LauncherSubsystem extends SubsystemBase {
 
     /** Reference to indexer subsystem for automatic feeding when at target RPM. */
     private IndexerSubsystem m_indexer = null;
+
+    /** Optional reference to intake subsystem so we can auto-wiggle while shooting. */
+    private IntakeSubsystemProfiled m_intake = null;
+
+    /** Wiggle command instance when scheduled by the launcher (long-running while shooting). */
+    private Command m_wiggleCommand = null;
 
     /** Rate limiter for telemetry updates (10Hz instead of 50Hz). */
     private final TelemetryRateLimiter m_telemetryRateLimiter = new TelemetryRateLimiter(10.0);
@@ -141,8 +151,23 @@ public class LauncherSubsystem extends SubsystemBase {
             if (isAtTargetRpm()) {
                 m_feederMotor.setVoltage(LauncherConstants.kFeederVoltage);
                 if (m_indexer != null) m_indexer.run();
+
+                // If intake is present, schedule a long-running wiggle command while shooting
+                if (m_intake != null) {
+                    // If we don't have one scheduled, create and schedule it
+                    if (m_wiggleCommand == null || !CommandScheduler.getInstance().isScheduled(m_wiggleCommand)) {
+                        m_wiggleCommand = new WiggleIntakeCommand(m_intake, Integer.MAX_VALUE);
+                        CommandScheduler.getInstance().schedule(m_wiggleCommand);
+                    }
+                }
             } else {
                 m_feederMotor.stopMotor();
+
+                // Shooter not at RPM — cancel any wiggle scheduled by the launcher
+                if (m_wiggleCommand != null) {
+                    CommandScheduler.getInstance().cancel(m_wiggleCommand);
+                    m_wiggleCommand = null;
+                }
             }
 
             //TODO
@@ -222,6 +247,11 @@ public class LauncherSubsystem extends SubsystemBase {
             if (m_telemetryRateLimiter.hasChangedBoolean("Launcher/Should Start Indexer", shouldStartIndexer)) {
                 SmartDashboard.putBoolean("Launcher/Should Start Indexer", shouldStartIndexer);
             }
+            // Wiggle scheduled status
+            boolean wiggleScheduled = (m_wiggleCommand != null) && CommandScheduler.getInstance().isScheduled(m_wiggleCommand);
+            if (m_telemetryRateLimiter.hasChangedBoolean("Launcher/Wiggle Scheduled", wiggleScheduled)) {
+                SmartDashboard.putBoolean("Launcher/Wiggle Scheduled", wiggleScheduled);
+            }
         }
     }
 
@@ -247,6 +277,11 @@ public class LauncherSubsystem extends SubsystemBase {
         m_isFeederRunning = false;
         m_isFeederReversing = false;
         if (m_indexer != null) m_indexer.stop();
+        // Cancel any wiggle that the launcher scheduled
+        if (m_wiggleCommand != null) {
+            CommandScheduler.getInstance().cancel(m_wiggleCommand);
+            m_wiggleCommand = null;
+        }
     }
 
     /**
@@ -316,6 +351,14 @@ public class LauncherSubsystem extends SubsystemBase {
      */
     public void setIndexer(IndexerSubsystem indexer) {
         m_indexer = indexer;
+    }
+
+    /**
+     * Sets a reference to the intake subsystem so the launcher can schedule
+     * the wiggle command while shooting. Call this from RobotContainer during setup.
+     */
+    public void setIntake(IntakeSubsystemProfiled intake) {
+        m_intake = intake;
     }
 
     /**
