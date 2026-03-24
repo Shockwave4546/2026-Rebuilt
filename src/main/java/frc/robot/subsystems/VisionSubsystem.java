@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import org.photonvision.PhotonCamera;
 import org.photonvision.targeting.PhotonTrackedTarget;
+import frc.robot.util.TelemetryRateLimiter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,14 +31,21 @@ public class VisionSubsystem extends SubsystemBase {
   private PhotonTrackedTarget m_lastFrontLeftTarget = null;
   private PhotonTrackedTarget m_lastFrontRightTarget = null;
 
+  /** Rate limiter for telemetry updates (10Hz instead of 50Hz). */
+  private final TelemetryRateLimiter m_telemetryRateLimiter = new TelemetryRateLimiter(10.0);
+
   /** Creates a new VisionSubsystem. */
   public VisionSubsystem() {
     m_frontLeftCamera = new PhotonCamera(FRONT_LEFT_CAMERA_NAME);
     m_frontRightCamera = new PhotonCamera(FRONT_RIGHT_CAMERA_NAME);
 
+    // Disable version check on cameras to reduce unnecessary network traffic
+    PhotonCamera.setVersionCheckEnabled(false);
+    
     System.out.println("VisionSubsystem initialized with cameras:");
-    System.out.println("  - " + FRONT_LEFT_CAMERA_NAME);
-    System.out.println("  - " + FRONT_RIGHT_CAMERA_NAME);
+    System.out.println("  - " + FRONT_LEFT_CAMERA_NAME + " (AprilTag detection only)");
+    System.out.println("  - " + FRONT_RIGHT_CAMERA_NAME + " (AprilTag detection only)");
+    System.out.println("  - Driver Camera streaming enabled (FMS bandwidth optimized)");
   }
 
   @Override
@@ -46,10 +54,6 @@ public class VisionSubsystem extends SubsystemBase {
     var frontLeftResult = m_frontLeftCamera.getLatestResult();
     if (frontLeftResult.hasTargets()) {
       m_lastFrontLeftTarget = frontLeftResult.getBestTarget();
-      // Only log essential robot-to-tag measurements
-      SmartDashboard.putNumber("Vision/FrontLeft_TagID", m_lastFrontLeftTarget.getFiducialId());
-      SmartDashboard.putNumber("Vision/FrontLeft_Yaw", m_lastFrontLeftTarget.getYaw());
-      SmartDashboard.putNumber("Vision/FrontLeft_Skew", m_lastFrontLeftTarget.getSkew());
     } else {
       m_lastFrontLeftTarget = null;
     }
@@ -58,12 +62,41 @@ public class VisionSubsystem extends SubsystemBase {
     var frontRightResult = m_frontRightCamera.getLatestResult();
     if (frontRightResult.hasTargets()) {
       m_lastFrontRightTarget = frontRightResult.getBestTarget();
-      // Only log essential robot-to-tag measurements
-      SmartDashboard.putNumber("Vision/FrontRight_TagID", m_lastFrontRightTarget.getFiducialId());
-      SmartDashboard.putNumber("Vision/FrontRight_Yaw", m_lastFrontRightTarget.getYaw());
-      SmartDashboard.putNumber("Vision/FrontRight_Skew", m_lastFrontRightTarget.getSkew());
     } else {
       m_lastFrontRightTarget = null;
+    }
+
+    // --- Dashboard telemetry (rate-limited to 10Hz, change-detection on continuous values) ---
+    if (m_lastFrontLeftTarget != null) {
+      int tagID = m_lastFrontLeftTarget.getFiducialId();
+      double yaw = m_lastFrontLeftTarget.getYaw();
+      double skew = m_lastFrontLeftTarget.getSkew();
+
+      if (m_telemetryRateLimiter.hasChangedNumber("Vision/FrontLeft_TagID", tagID)) {
+        SmartDashboard.putNumber("Vision/FrontLeft_TagID", tagID);
+      }
+      if (m_telemetryRateLimiter.hasChangedNumber("Vision/FrontLeft_Yaw", yaw)) {
+        SmartDashboard.putNumber("Vision/FrontLeft_Yaw", yaw);
+      }
+      if (m_telemetryRateLimiter.hasChangedNumber("Vision/FrontLeft_Skew", skew)) {
+        SmartDashboard.putNumber("Vision/FrontLeft_Skew", skew);
+      }
+    }
+
+    if (m_lastFrontRightTarget != null) {
+      int tagID = m_lastFrontRightTarget.getFiducialId();
+      double yaw = m_lastFrontRightTarget.getYaw();
+      double skew = m_lastFrontRightTarget.getSkew();
+
+      if (m_telemetryRateLimiter.hasChangedNumber("Vision/FrontRight_TagID", tagID)) {
+        SmartDashboard.putNumber("Vision/FrontRight_TagID", tagID);
+      }
+      if (m_telemetryRateLimiter.hasChangedNumber("Vision/FrontRight_Yaw", yaw)) {
+        SmartDashboard.putNumber("Vision/FrontRight_Yaw", yaw);
+      }
+      if (m_telemetryRateLimiter.hasChangedNumber("Vision/FrontRight_Skew", skew)) {
+        SmartDashboard.putNumber("Vision/FrontRight_Skew", skew);
+      }
     }
   }
 

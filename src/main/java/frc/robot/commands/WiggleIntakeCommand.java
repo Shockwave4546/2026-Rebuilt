@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.subsystems.IntakeSubsystemProfiled;
+import frc.robot.util.TelemetryRateLimiter;
 
 /**
  * Wiggles the intake pivot between fully deployed and halfway toward retracted.
@@ -45,6 +46,9 @@ public class WiggleIntakeCommand extends Command {
   // State tracking
   private int m_completedCycles = 0;
   private boolean m_movingUp = false; // Start by moving to low position, then up
+
+  /** Rate limiter for telemetry updates (10Hz instead of 50Hz). */
+  private final TelemetryRateLimiter m_telemetryRateLimiter = new TelemetryRateLimiter(10.0);
   
   /**
    * Creates a new WiggleIntakeCommand.
@@ -100,15 +104,17 @@ public class WiggleIntakeCommand extends Command {
       m_intake.setTargetPosition(targetPos);
     }
     
-    // Dashboard telemetry
-    SmartDashboard.putNumber("Wiggle/Current_Position", currentPos);
-    SmartDashboard.putNumber("Wiggle/Target_Position", targetPos);
-    SmartDashboard.putNumber("Wiggle/Low_Target", LOW_POSITION);
-    SmartDashboard.putNumber("Wiggle/High_Target", HIGH_POSITION);
-    SmartDashboard.putNumber("Wiggle/Cycle", m_completedCycles);
-    SmartDashboard.putString("Wiggle/Status", 
-        m_movingUp ? "Moving up to " + String.format("%.2f", HIGH_POSITION) 
-                   : "Moving down to " + String.format("%.2f", LOW_POSITION));
+    // --- Dashboard telemetry (rate-limited to 10Hz to reduce bandwidth) ---
+    if (m_telemetryRateLimiter.tryUpdate()) {
+      SmartDashboard.putNumber("Wiggle/Current_Position", currentPos);
+      SmartDashboard.putNumber("Wiggle/Target_Position", targetPos);
+      SmartDashboard.putNumber("Wiggle/Low_Target", LOW_POSITION);
+      SmartDashboard.putNumber("Wiggle/High_Target", HIGH_POSITION);
+      SmartDashboard.putNumber("Wiggle/Cycle", m_completedCycles);
+      SmartDashboard.putString("Wiggle/Status", 
+          m_movingUp ? "Moving up to " + String.format("%.2f", HIGH_POSITION) 
+                     : "Moving down to " + String.format("%.2f", LOW_POSITION));
+    }
   }
 
   @Override

@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Configs;
 import frc.robot.Constants.LauncherConstants;
+import frc.robot.util.TelemetryRateLimiter;
 
 /**
  * Launcher subsystem consisting of:
@@ -72,6 +73,9 @@ public class LauncherSubsystem extends SubsystemBase {
 
     /** Reference to indexer subsystem for automatic feeding when at target RPM. */
     private IndexerSubsystem m_indexer = null;
+
+    /** Rate limiter for telemetry updates (10Hz instead of 50Hz). */
+    private final TelemetryRateLimiter m_telemetryRateLimiter = new TelemetryRateLimiter(10.0);
 
     // -------------------------------------------------------------------------
     // Constructor
@@ -172,22 +176,52 @@ public class LauncherSubsystem extends SubsystemBase {
             // Follower coasts automatically when leader is idle
         }
 
-        // --- Dashboard telemetry ---
+        // --- Dashboard telemetry (rate-limited to 10Hz, change-detection on continuous values) ---
         double ffVolts = m_shooterFF.calculate(m_targetRpm);
-        SmartDashboard.putNumber("Launcher/Shooter RPM",         m_shooterEncoder.getVelocity());
-        SmartDashboard.putBoolean("Launcher/At Target RPM",      isAtTargetRpm());
-        SmartDashboard.putNumber("Launcher/FF Voltage (V)",      ffVolts);
-        SmartDashboard.putNumber("Launcher/Applied Output",      m_shooterLeader.getAppliedOutput());
-        SmartDashboard.putNumber("Launcher/Shooter Current (A)", m_shooterLeader.getOutputCurrent());
-        SmartDashboard.putNumber("Launcher/Feeder Current (A)",  m_feederMotor.getOutputCurrent());
-        SmartDashboard.putBoolean("Launcher/Running",            m_isRunning);
-        SmartDashboard.putBoolean("Launcher/Spinning Up",        m_isSpinningUp);
+        double shooterRpm = m_shooterEncoder.getVelocity();
+        double appliedOutput = m_shooterLeader.getAppliedOutput();
+        double shooterCurrent = m_shooterLeader.getOutputCurrent();
+        double feederCurrent = m_feederMotor.getOutputCurrent();
+        boolean atTargetRpm = isAtTargetRpm();
+
+        if (m_telemetryRateLimiter.hasChangedNumber("Launcher/Shooter RPM", shooterRpm)) {
+            SmartDashboard.putNumber("Launcher/Shooter RPM", shooterRpm);
+        }
+        if (m_telemetryRateLimiter.hasChangedBoolean("Launcher/At Target RPM", atTargetRpm)) {
+            SmartDashboard.putBoolean("Launcher/At Target RPM", atTargetRpm);
+        }
+        if (m_telemetryRateLimiter.hasChangedNumber("Launcher/FF Voltage (V)", ffVolts)) {
+            SmartDashboard.putNumber("Launcher/FF Voltage (V)", ffVolts);
+        }
+        if (m_telemetryRateLimiter.hasChangedNumber("Launcher/Applied Output", appliedOutput)) {
+            SmartDashboard.putNumber("Launcher/Applied Output", appliedOutput);
+        }
+        if (m_telemetryRateLimiter.hasChangedNumber("Launcher/Shooter Current (A)", shooterCurrent)) {
+            SmartDashboard.putNumber("Launcher/Shooter Current (A)", shooterCurrent);
+        }
+        if (m_telemetryRateLimiter.hasChangedNumber("Launcher/Feeder Current (A)", feederCurrent)) {
+            SmartDashboard.putNumber("Launcher/Feeder Current (A)", feederCurrent);
+        }
+        if (m_telemetryRateLimiter.hasChangedBoolean("Launcher/Running", m_isRunning)) {
+            SmartDashboard.putBoolean("Launcher/Running", m_isRunning);
+        }
+        if (m_telemetryRateLimiter.hasChangedBoolean("Launcher/Spinning Up", m_isSpinningUp)) {
+            SmartDashboard.putBoolean("Launcher/Spinning Up", m_isSpinningUp);
+        }
         
         // Debug: indexer status
-        SmartDashboard.putBoolean("Launcher/Indexer Connected", m_indexer != null);
+        boolean indexerConnected = m_indexer != null;
+        if (m_telemetryRateLimiter.hasChangedBoolean("Launcher/Indexer Connected", indexerConnected)) {
+            SmartDashboard.putBoolean("Launcher/Indexer Connected", indexerConnected);
+        }
         if (m_indexer != null) {
-            SmartDashboard.putBoolean("Launcher/Indexer Running (from Launcher)", m_indexer.isRunning());
-            SmartDashboard.putBoolean("Launcher/Should Start Indexer", m_isRunning && isAtTargetRpm());
+            if (m_telemetryRateLimiter.hasChangedBoolean("Launcher/Indexer Running (from Launcher)", m_indexer.isRunning())) {
+                SmartDashboard.putBoolean("Launcher/Indexer Running (from Launcher)", m_indexer.isRunning());
+            }
+            boolean shouldStartIndexer = m_isRunning && isAtTargetRpm();
+            if (m_telemetryRateLimiter.hasChangedBoolean("Launcher/Should Start Indexer", shouldStartIndexer)) {
+                SmartDashboard.putBoolean("Launcher/Should Start Indexer", shouldStartIndexer);
+            }
         }
     }
 

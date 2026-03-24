@@ -21,6 +21,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Configs;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.IntakeConstantsProfiled;
+import frc.robot.util.TelemetryRateLimiter;
 
 /**
  * Alternate intake pivot subsystem that runs the motion profile entirely on the
@@ -81,6 +82,9 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
   private boolean m_isRollerRunning = false;
   private boolean m_isRollerReversing = false;
 
+  /** Rate limiter for telemetry updates (10Hz instead of 50Hz). */
+  private final TelemetryRateLimiter m_telemetryRateLimiter;
+
   public IntakeSubsystemProfiled() {
     // --- Pivot motor ---
     m_pivotMotor = new SparkMax(IntakeConstants.kIntakePivotMotorCanId, MotorType.kBrushless);
@@ -130,6 +134,9 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
         .idleMode(IdleMode.kCoast)
         .smartCurrentLimit(IntakeConstants.kIntakeRollerCurrentLimit);
     m_rollerFollowerMotor.configure(rollerFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // Rate limiter for telemetry (10Hz instead of 50Hz)
+    m_telemetryRateLimiter = new TelemetryRateLimiter(10.0);
   }
 
   // ---------------------------------------------------------------------------
@@ -175,10 +182,13 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
       // Duty-cycle directly to SparkMax — REV closed-loop firmware bypassed.
       m_pivotMotor.set(output);
 
-      SmartDashboard.putNumber("Intake/PID Output", pidOutput);
-      SmartDashboard.putNumber("Intake/FF Output",  ffOutput);
-      SmartDashboard.putNumber("Intake/Profile Pos (rot)", setpoint.position);
-      SmartDashboard.putNumber("Intake/Profile Vel (rot-s)", setpoint.velocity);
+      // --- Publish PID/FF debugging telemetry (rate-limited to 10Hz) ---
+      if (m_telemetryRateLimiter.tryUpdate()) {
+        SmartDashboard.putNumber("Intake/PID Output", pidOutput);
+        SmartDashboard.putNumber("Intake/FF Output",  ffOutput);
+        SmartDashboard.putNumber("Intake/Profile Pos (rot)", setpoint.position);
+        SmartDashboard.putNumber("Intake/Profile Vel (rot-s)", setpoint.velocity);
+      }
     } else {
       m_pivotMotor.set(0.0);
     }
@@ -195,23 +205,56 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
       m_rollerFollowerMotor.set(0.0);
     }
 
-    // --- Dashboard telemetry ---
-    SmartDashboard.putNumber("Intake/Position (rot)", currentPosition);
-    SmartDashboard.putNumber("Intake/Velocity (rot-s)", m_pivotEncoder.getVelocity());
-    SmartDashboard.putNumber("Intake/Motor Output", m_pivotMotor.get());
-    SmartDashboard.putNumber("Intake/Applied Voltage (V)", m_pivotMotor.getAppliedOutput() * 12.0);
-    SmartDashboard.putNumber("Intake/Current (A)", m_pivotMotor.getOutputCurrent());
+    // --- Dashboard telemetry (rate-limited to 10Hz, change-detection on continuous values) ---
+    double velocity = m_pivotEncoder.getVelocity();
+    double motorOutput = m_pivotMotor.get();
+    double appliedVoltage = m_pivotMotor.getAppliedOutput() * 12.0;
+    double current = m_pivotMotor.getOutputCurrent();
+    boolean atTarget = isAtTarget();
+    boolean deployed = isDeployed();
+    boolean retracted = isRetracted();
 
-    if (m_targetPosition != null) {
-      SmartDashboard.putNumber("Intake/Target (rot)", m_targetPosition);
-      SmartDashboard.putNumber("Intake/Error (rot)", m_targetPosition - currentPosition);
+    if (m_telemetryRateLimiter.hasChangedNumber("Intake/Position (rot)", currentPosition)) {
+      SmartDashboard.putNumber("Intake/Position (rot)", currentPosition);
+    }
+    if (m_telemetryRateLimiter.hasChangedNumber("Intake/Velocity (rot-s)", velocity)) {
+      SmartDashboard.putNumber("Intake/Velocity (rot-s)", velocity);
+    }
+    if (m_telemetryRateLimiter.hasChangedNumber("Intake/Motor Output", motorOutput)) {
+      SmartDashboard.putNumber("Intake/Motor Output", motorOutput);
+    }
+    if (m_telemetryRateLimiter.hasChangedNumber("Intake/Applied Voltage (V)", appliedVoltage)) {
+      SmartDashboard.putNumber("Intake/Applied Voltage (V)", appliedVoltage);
+    }
+    if (m_telemetryRateLimiter.hasChangedNumber("Intake/Current (A)", current)) {
+      SmartDashboard.putNumber("Intake/Current (A)", current);
     }
 
-    SmartDashboard.putBoolean("Intake/At Target",      isAtTarget());
-    SmartDashboard.putBoolean("Intake/Deployed",       isDeployed());
-    SmartDashboard.putBoolean("Intake/Retracted",      isRetracted());
-    SmartDashboard.putBoolean("Intake/Pivot Enabled",  m_isPivotEnabled);
-    SmartDashboard.putBoolean("Intake/Roller Running", m_isRollerRunning);
+    if (m_targetPosition != null) {
+      if (m_telemetryRateLimiter.hasChangedNumber("Intake/Target (rot)", m_targetPosition)) {
+        SmartDashboard.putNumber("Intake/Target (rot)", m_targetPosition);
+      }
+      double error = m_targetPosition - currentPosition;
+      if (m_telemetryRateLimiter.hasChangedNumber("Intake/Error (rot)", error)) {
+        SmartDashboard.putNumber("Intake/Error (rot)", error);
+      }
+    }
+
+    if (m_telemetryRateLimiter.hasChangedBoolean("Intake/At Target", atTarget)) {
+      SmartDashboard.putBoolean("Intake/At Target", atTarget);
+    }
+    if (m_telemetryRateLimiter.hasChangedBoolean("Intake/Deployed", deployed)) {
+      SmartDashboard.putBoolean("Intake/Deployed", deployed);
+    }
+    if (m_telemetryRateLimiter.hasChangedBoolean("Intake/Retracted", retracted)) {
+      SmartDashboard.putBoolean("Intake/Retracted", retracted);
+    }
+    if (m_telemetryRateLimiter.hasChangedBoolean("Intake/Pivot Enabled", m_isPivotEnabled)) {
+      SmartDashboard.putBoolean("Intake/Pivot Enabled", m_isPivotEnabled);
+    }
+    if (m_telemetryRateLimiter.hasChangedBoolean("Intake/Roller Running", m_isRollerRunning)) {
+      SmartDashboard.putBoolean("Intake/Roller Running", m_isRollerRunning);
+    }
   }
 
   // ---------------------------------------------------------------------------

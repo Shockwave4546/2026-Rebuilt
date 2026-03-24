@@ -21,6 +21,7 @@ import frc.robot.Constants.DriveConstants;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import static edu.wpi.first.units.Units.Degrees;
+import frc.robot.util.TelemetryRateLimiter;
 
 public class DriveSubsystem extends SubsystemBase {
   // Create MAXSwerveModules
@@ -52,6 +53,9 @@ public class DriveSubsystem extends SubsystemBase {
 
   // Speed multiplier for dashboard control
   private double m_speedMultiplier = 1.0;
+
+  /** Rate limiter for telemetry updates (10Hz instead of 50Hz). */
+  private final TelemetryRateLimiter m_telemetryRateLimiter = new TelemetryRateLimiter(10.0);
 
   /** Creates a new DriveSubsystem. */
   public DriveSubsystem() {
@@ -93,8 +97,11 @@ public class DriveSubsystem extends SubsystemBase {
             m_rearRight.getPosition()
         });
 
-    // Put heading on dashboard
-    SmartDashboard.putNumber("Heading", getHeading());
+    // --- Dashboard telemetry (rate-limited to 10Hz, change-detection on continuous values) ---
+    double heading = getHeading();
+    if (m_telemetryRateLimiter.hasChangedNumber("Heading", heading)) {
+      SmartDashboard.putNumber("Heading", heading);
+    }
 
     // Read speed multiplier from dashboard
     m_speedMultiplier = SmartDashboard.getNumber("Speed Multiplier", 1.0);

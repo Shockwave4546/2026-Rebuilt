@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Configs;
 import frc.robot.Constants.IndexerConstants;
+import frc.robot.util.TelemetryRateLimiter;
 
 /**
  * Indexer subsystem for feeding game pieces.
@@ -26,6 +27,9 @@ public class IndexerSubsystem extends SubsystemBase {
 
     private boolean m_isRunning = false;
     private boolean m_isReversing = false;
+
+    /** Rate limiter for telemetry updates (10Hz instead of 50Hz). */
+    private final TelemetryRateLimiter m_telemetryRateLimiter = new TelemetryRateLimiter(10.0);
 
     public IndexerSubsystem() {
         m_indexerMotor = new SparkMax(IndexerConstants.kIndexerMotorCanId, MotorType.kBrushless);
@@ -45,13 +49,26 @@ public class IndexerSubsystem extends SubsystemBase {
             m_indexerMotor.stopMotor();
         }
 
-        // Dashboard telemetry
-        SmartDashboard.putBoolean("Indexer/Running", m_isRunning);
-        SmartDashboard.putBoolean("Indexer/Reversing", m_isReversing);
-        SmartDashboard.putNumber("Indexer/Applied Voltage (V)", 
-                m_indexerMotor.getAppliedOutput() * 12.0);
-        SmartDashboard.putNumber("Indexer/Current (A)", m_indexerMotor.getOutputCurrent());
-        SmartDashboard.putNumber("Indexer/Motor Output %", m_indexerMotor.getAppliedOutput() * 100.0);
+        // --- Dashboard telemetry (rate-limited to 10Hz, change-detection on continuous values) ---
+        double appliedVoltage = m_indexerMotor.getAppliedOutput() * 12.0;
+        double current = m_indexerMotor.getOutputCurrent();
+        double motorOutputPercent = m_indexerMotor.getAppliedOutput() * 100.0;
+
+        if (m_telemetryRateLimiter.hasChangedBoolean("Indexer/Running", m_isRunning)) {
+            SmartDashboard.putBoolean("Indexer/Running", m_isRunning);
+        }
+        if (m_telemetryRateLimiter.hasChangedBoolean("Indexer/Reversing", m_isReversing)) {
+            SmartDashboard.putBoolean("Indexer/Reversing", m_isReversing);
+        }
+        if (m_telemetryRateLimiter.hasChangedNumber("Indexer/Applied Voltage (V)", appliedVoltage)) {
+            SmartDashboard.putNumber("Indexer/Applied Voltage (V)", appliedVoltage);
+        }
+        if (m_telemetryRateLimiter.hasChangedNumber("Indexer/Current (A)", current)) {
+            SmartDashboard.putNumber("Indexer/Current (A)", current);
+        }
+        if (m_telemetryRateLimiter.hasChangedNumber("Indexer/Motor Output %", motorOutputPercent)) {
+            SmartDashboard.putNumber("Indexer/Motor Output %", motorOutputPercent);
+        }
     }
 
     /**

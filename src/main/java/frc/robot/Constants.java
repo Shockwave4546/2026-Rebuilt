@@ -4,6 +4,10 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.util.Units;
+
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
@@ -155,6 +159,43 @@ public final class Constants {
     public static final double kXTolerance = 0.03; // meters
     public static final double kYTolerance = 0.03; // meters
     public static final double kYawTolerance = 2.0; // degrees
+  }
+
+  /**
+   * Camera mount positions and orientations relative to the robot center.
+   * Used for pose estimation and vision calculations.
+   * 
+   * Coordinate system:
+   * - X-axis: right (positive right, negative left)
+   * - Y-axis: forward (positive forward, negative back)
+   * - Z-axis: up (positive up, negative down)
+   */
+  public static final class VisionConstants {
+    // Front Left Camera (old left camera, now relocated)
+    // Position: 3 inches right, 10.5 inches back, 18.7 inches high
+    // Rotation: 0°, 0°, 0° (facing horizon straight ahead)
+    public static final Transform3d ROBOT_TO_FRONT_LEFT_CAMERA = 
+        new Transform3d(
+            new Translation3d(
+                Units.inchesToMeters(3.0),      // X: 3 inches right of center
+                Units.inchesToMeters(-10.5),    // Y: 10.5 inches back from center
+                Units.inchesToMeters(20.7)      // Z: 18.7 inches high (2.7" + 16")
+            ),
+            new edu.wpi.first.math.geometry.Rotation3d(0, 0, 0)  // No rotation, facing horizon
+        );
+
+    // Front Right Camera (update as needed)
+    // TODO: Add Front Right camera mount position
+    // For now, using a placeholder symmetric position on the right side
+    public static final Transform3d ROBOT_TO_FRONT_RIGHT_CAMERA = 
+        new Transform3d(
+            new Translation3d(
+                Units.inchesToMeters(10),     // X: 10 inches right of center (symmetric)
+                Units.inchesToMeters(-8.5),    // Y: 8.5 inches back from center
+                Units.inchesToMeters(18.7)      // Z: 18.7 inches high
+            ),
+            new edu.wpi.first.math.geometry.Rotation3d(0, 0, 180)
+        );
   }
 
   public static final class IntakeConstants {
