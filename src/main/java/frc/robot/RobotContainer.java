@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.OIConstants;
 import frc.robot.commands.CoordinatedHeadingCommand;
 import frc.robot.commands.SnapHeadingCommand;
+import frc.robot.commands.WiggleIntakeCommand;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.VisionSubsystem;
@@ -181,6 +182,10 @@ public class RobotContainer {
         .onFalse(new InstantCommand(
             () -> m_launcher.stopLauncher(),
             m_launcher));
+
+    // D-Pad Down: Wiggle intake (hold to continuously shuffle balls)
+    new Trigger(() -> m_driverController.getPOV() == 180)
+        .whileTrue(new WiggleIntakeCommand(m_intake, Integer.MAX_VALUE));
   }
 
   /**

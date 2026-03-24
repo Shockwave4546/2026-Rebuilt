@@ -57,7 +57,7 @@ public final class Constants {
     public static final int kFrontLeftTurningCanId = 23;
 
     // Pigeon2 Gyro CAN ID
-    public static final int kGyroCanId = 30;
+    public static final int kGyroCanId = 0;
 
     // Pigeon2 update frequency in Hz (default 100 Hz from factory)
     // Higher = more frequent updates but more CAN bus load
@@ -166,22 +166,22 @@ public final class Constants {
     // Motor inversion
     public static final boolean kIntakePivotMotorInverted = true;
     public static final boolean kIntakeRollerMotorInverted = true;
-    // Follower is inverted relative to leader (mounted facing opposite direction)
-    public static final boolean kIntakeRollerFollowerMotorInverted = false;
+    // Both rollers should spin in the same direction (both inverted)
+    public static final boolean kIntakeRollerFollowerMotorInverted = true;
 
     // Encoder configuration (REV Through-Bore Encoder V2 on SparkMax)
     public static final boolean kIntakePivotEncoderInverted = false;
 
     // Position limits (in rotations from the absolute encoder)
-    // Deployed (down) ≈ 0.079, No gravity ≈ 0.23, Retracted (up) ≈ 0.292
+    // Deployed (down) ≈ 0.29, No gravity ≈ 0.58, Retracted (up) ≈ 0.63
     // Encoder increases as arm rises; min = deployed, max = retracted
-    public static final double kIntakePivotMinPosition = 0.05;   // rotations (deployed, hard limit)
-    public static final double kIntakePivotMaxPosition = 0.35;   // rotations (retracted, hard limit)
+    public static final double kIntakePivotMinPosition = 0.25;   // rotations (deployed, hard limit)
+    public static final double kIntakePivotMaxPosition = 0.66;   // rotations (retracted, hard limit)
 
     // Named setpoints
-    public static final double kIntakePivotDeployedPosition  = 0.079; // rotations
-    public static final double kIntakePivotWeightlessPosition = 0.23; // rotations
-    public static final double kIntakePivotRetractedPosition = 0.292; // rotations
+    public static final double kIntakePivotDeployedPosition  = 0.29; // rotations
+    public static final double kIntakePivotWeightlessPosition = 0.58; // rotations
+    public static final double kIntakePivotRetractedPosition = 0.63; // rotations
 
     // Threshold for deployed/retracted state detection (rotations)
     public static final double kIntakePivotDeployedThreshold  = kIntakePivotDeployedPosition + 0.05;
@@ -189,9 +189,9 @@ public final class Constants {
 
     // MAXMotion PID gains (slot 0, encoder units = rotations)
     // kP: volts per rotation of error; kD dampen oscillations at setpoint
-    public static final double kP_IntakePivot = 18.0;  // reduced from 20 to eliminate stutter
+    public static final double kP_IntakePivot = 0.0;  // 18 for old intake position
     public static final double kI_IntakePivot = 0.0;
-    public static final double kD_IntakePivot = 1;   // dampen P oscillations at target
+    public static final double kD_IntakePivot = 0.0;   // 1 for old intake posiiton
     public static final double kFF_IntakePivot = 0.0; // minimal FF; gravity cancels out between setpoints
 
     // MAXMotion profile constraints
@@ -214,11 +214,14 @@ public final class Constants {
     public static final double kIntakePivotMaxOutput =  1.0;
 
     // Current limits (Amps)
-    public static final int kIntakePivotCurrentLimit  = 40;  // NEO on pivot
+    public static final int kIntakePivotCurrentLimit  = 70;  // NEO on pivot (increased for heavier intake)
     public static final int kIntakeRollerCurrentLimit = 20;  // NEO 550 on roller
 
     // Roller speed (duty cycle, 0-1)
-    public static final double kIntakeRollerSpeed = 1.0;
+    public static final double kIntakeRollerSpeed = 9.0 / 12.0;  // 9V out of 12V bus = 0.75 duty cycle
+    
+    // Follower roller speed multiplier (0-1, where 1.0 = same as leader)
+    public static final double kIntakeRollerFollowerSpeedMultiplier = 0.35;
   }
 
   /**
@@ -238,16 +241,16 @@ public final class Constants {
 
     // TrapezoidProfile constraints — match the old MAXMotion values so the arm
     // moves at the same speed.  Tune here to change feel.
-    public static final double kMaxVelocity     = 6*0.0278; // rot/s (10 degrees/sec)
-    public static final double kMaxAcceleration = 6*0.0278; // rot/s² (matching velocity for smooth ramp)
+    public static final double kMaxVelocity     = 600 * 0.00278;  // rot/s (3 degrees/sec, very conservative for testing)
+    public static final double kMaxAcceleration = 200 * 0.00278;  // rot/s² (1 degree/s², prevents slams)
 
     // ProfiledPIDController gains (output = duty cycle, −1.0 to 1.0).
     // kP: duty-cycle per rotation of position error.
     // kD: damps velocity overshoot near the setpoint.
     // Start conservative; increase kP until responsive, then add kD to kill bounce.
-    public static final double kP = 3.0;
+    public static final double kP = 3.5; // Increased from 4.0 for snappy wiggle setpoint swapping
     public static final double kI = 0.0;
-    public static final double kD = 0.3;
+    public static final double kD = 0.1; // Damping to prevent overshoot slam
 
     // ArmFeedforward gains (output = duty cycle).
     // kS: static friction — minimum duty cycle to break stiction.
@@ -256,28 +259,28 @@ public final class Constants {
     //     balance point and reverses sign on the other side — no manual sign logic needed.
     // kV: velocity feedforward — duty cycle per (rot/s); keeps profile tracking tight.
     // kA: acceleration feedforward — leave 0 for a lightweight arm.
-    public static final double kS = 0.01;
-    public static final double kG = 0.05; // Negated: test sign direction for gravity compensation
-    public static final double kV = 0.01;
-    public static final double kA = 0.01;
+    public static final double kS = 0.00125; //
+    public static final double kG = 0.02; // 
+    public static final double kV = 0.0; 
+    public static final double kA = 0.0;
 
     // Gravity geometry — maps raw encoder rotations to a physical angle in radians
     // so that ArmFeedforward's cos(θ) term is geometrically correct.
     //
     // The arm passes through three characteristic encoder positions:
-    //   kGravityPeakPosition  (0.079): arm is deployed (down) → maximum gravity torque, cos(θ) = 1
-    //   kGravityZeroPosition  (0.23): arm is weightless (horizontal-ish) → zero gravity torque, cos(θ) = 0
-    //   gravity peak again    (0.381): arm is retracted (up) → gravity reverses, cos(θ) = −1
+    //   kGravityPeakPosition  (0.29): arm is deployed (down) → maximum gravity torque, cos(θ) = 1
+    //   kGravityZeroPosition  (0.58): arm is weightless (horizontal-ish) → zero gravity torque, cos(θ) = 0
+    //   gravity peak again    (~0.87): arm is retracted (up) → gravity reverses, cos(θ) = −1
     //
     // The conversion formula used in IntakeSubsystemProfiled:
-    //   angleRad = (encoderPos − kGravityZeroPosition)
+    //   angleRad = (encoderPos − kGravityPeakPosition)
     //            / (kGravityZeroPosition − kGravityPeakPosition)
     //            * (π / 2)
     //
-    // This produces:  0 rad at the peak (gravity max), π/2 rad at vertical (gravity zero), π rad on the far side —
-    // exactly what ArmFeedforward expects for its cos(θ) calculation.
-    public static final double kGravityPeakPosition = 0.079; // rotations (arm deployed, gravity max)
-    public static final double kGravityZeroPosition = 0.23; // rotations (arm weightless, gravity zero)
+    // This produces:  0 rad at deployed (gravity max, cos(0)=1), π/2 rad at weightless (gravity zero, cos(π/2)=0),
+    // π rad on the far side — exactly what ArmFeedforward expects for its cos(θ) calculation.
+    public static final double kGravityPeakPosition = 0.29; // rotations (arm deployed, gravity max)
+    public static final double kGravityZeroPosition = 0.58; // rotations (arm weightless, gravity zero)
 
     // isAtTarget() tolerance (rotations).
     public static final double kTolerance = 0.017; // ~6 degrees
@@ -296,7 +299,7 @@ public final class Constants {
 
     // Current limits (Amps)
     public static final int kFeederCurrentLimit  = 20;  // NEO 550
-    public static final int kShooterCurrentLimit = 60;  // Vortex (each)
+    public static final int kShooterCurrentLimit = 70;  // Vortex (each)
 
     // Feeder voltage (open-loop, full bus voltage for max RPM)
     public static final double kFeederVoltage = 12.0; // volts

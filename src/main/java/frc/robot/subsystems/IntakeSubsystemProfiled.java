@@ -54,6 +54,7 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
 
   private final SparkMax m_pivotMotor;
   private final SparkMax m_rollerMotor;
+  private final SparkMax m_rollerFollowerMotor;
 
   private final AbsoluteEncoder m_pivotEncoder;
 
@@ -119,6 +120,16 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
         .idleMode(IdleMode.kCoast)
         .smartCurrentLimit(IntakeConstants.kIntakeRollerCurrentLimit);
     m_rollerMotor.configure(rollerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    // --- Roller follower motor (NEO 550, hardware-slaved follower) ---
+    // Mounted facing opposite direction, so inverted relative to leader
+    m_rollerFollowerMotor = new SparkMax(IntakeConstants.kIntakeRollerFollowerMotorCanId, MotorType.kBrushless);
+    SparkMaxConfig rollerFollowerConfig = new SparkMaxConfig();
+    rollerFollowerConfig
+        .inverted(IntakeConstants.kIntakeRollerFollowerMotorInverted)
+        .idleMode(IdleMode.kCoast)
+        .smartCurrentLimit(IntakeConstants.kIntakeRollerCurrentLimit);
+    m_rollerFollowerMotor.configure(rollerFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
   }
 
   // ---------------------------------------------------------------------------
@@ -140,17 +151,18 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
       // Convert encoder rotations → physical angle in radians so ArmFeedforward's
       // cos(θ) term is geometrically correct across the full range of motion.
       //
-      // Mapping: kGravityPeakPosition → 0 rad (arm horizontal, cos = 1, max gravity torque)
-      //          kGravityZeroPosition → π/2 rad (arm vertical, cos = 0, no gravity torque)
-      //          mirror position      → π rad (horizontal other side, cos = −1, gravity reverses)
+      // Mapping: kGravityPeakPosition → 0 rad (arm horizontal, cos(0) = 1, max gravity torque)
+      //          kGravityZeroPosition → π/2 rad (arm vertical, cos(π/2) = 0, no gravity torque)
+      //          mirror position      → π rad (horizontal other side, cos(π) = −1, gravity reverses)
       //
-      // Formula: θ = (pos − kGravityZeroPosition)
+      // Formula: θ = (pos − kGravityPeakPosition)
       //            / (kGravityZeroPosition − kGravityPeakPosition)
       //            * (π / 2)
-      //   → shifted so vertical = π/2, then scaled to the arm's travel range.
+      //   → at deployed (0.29): θ = 0 rad, cos(0) = 1 → full gravity
+      //   → at weightless (0.58): θ = π/2 rad, cos(π/2) = 0 → zero gravity ✓
       double scale = IntakeConstantsProfiled.kGravityZeroPosition
                    - IntakeConstantsProfiled.kGravityPeakPosition;
-      double posRad    = ((setpoint.position - IntakeConstantsProfiled.kGravityZeroPosition) / scale)
+      double posRad    = ((setpoint.position - IntakeConstantsProfiled.kGravityPeakPosition) / scale)
                        * (Math.PI / 2.0);
       double velRadPerSec = (setpoint.velocity / scale) * (Math.PI / 2.0);
       double ffOutput = m_pivotFF.calculate(posRad, velRadPerSec);
@@ -174,10 +186,13 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     // Rollers only spin while the arm is deployed.
     if (m_isRollerReversing && isDeployed()) {
       m_rollerMotor.set(-IntakeConstants.kIntakeRollerSpeed);  // Reverse
+      m_rollerFollowerMotor.set(-IntakeConstants.kIntakeRollerSpeed * IntakeConstants.kIntakeRollerFollowerSpeedMultiplier);  // Reverse at reduced speed
     } else if (m_isRollerRunning && isDeployed()) {
       m_rollerMotor.set(IntakeConstants.kIntakeRollerSpeed);   // Forward
+      m_rollerFollowerMotor.set(IntakeConstants.kIntakeRollerSpeed * IntakeConstants.kIntakeRollerFollowerSpeedMultiplier);   // Forward at reduced speed
     } else {
       m_rollerMotor.set(0.0);
+      m_rollerFollowerMotor.set(0.0);
     }
 
     // --- Dashboard telemetry ---
@@ -238,6 +253,7 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     m_isRollerRunning = false;
     m_pivotMotor.set(0.0);
     m_rollerMotor.set(0.0);
+    m_rollerFollowerMotor.set(0.0);
   }
 
   /** Enable the intake rollers (they will only spin while the arm is deployed). */
