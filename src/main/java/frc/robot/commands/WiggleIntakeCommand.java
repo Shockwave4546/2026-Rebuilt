@@ -32,7 +32,7 @@ public class WiggleIntakeCommand extends Command {
   private static final double RETRACTED_POSITION = IntakeConstants.kIntakePivotRetractedPosition; // 0.63
   
   // Calculate halfway from deployed to retracted
-  private static final double HALFWAY_UP = DEPLOYED_POSITION + ((RETRACTED_POSITION - DEPLOYED_POSITION) / 2.0);  // ~0.46
+  private static final double HALFWAY_UP = DEPLOYED_POSITION + ((RETRACTED_POSITION - DEPLOYED_POSITION) / 1.7);  // 59%
   
   private static final double LOW_POSITION = DEPLOYED_POSITION;   // All the way to the ground
   private static final double HIGH_POSITION = HALFWAY_UP;          // Halfway up
