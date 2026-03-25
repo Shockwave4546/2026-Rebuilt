@@ -259,10 +259,10 @@ public final class Constants {
     public static final int kIntakeRollerCurrentLimit = 20;  // NEO 550 on roller
 
     // Roller speed (duty cycle, 0-1)
-    public static final double kIntakeRollerSpeed = 9.0 / 12.0;  // 9V out of 12V bus = 0.75 duty cycle
+    public static final double kIntakeRollerSpeed = 12.0 / 12.0;  // Full duty = 100% for 9:1 gearing (was 9V for 4:1 gearing)
     
     // Follower roller speed multiplier (0-1, where 1.0 = same as leader)
-    public static final double kIntakeRollerFollowerSpeedMultiplier = 0.35;
+    public static final double kIntakeRollerFollowerSpeedMultiplier = 0.4;
   }
 
   /**
