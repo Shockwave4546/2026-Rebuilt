@@ -221,6 +221,7 @@ public final class Constants {
 
     // Named setpoints
     public static final double kIntakePivotDeployedPosition  = 0.29; // rotations
+    public static final double kIntakePivotPartiallyDeployedPosition = 0.367; // rotations (partially up for testing)
     public static final double kIntakePivotWeightlessPosition = 0.58; // rotations
     public static final double kIntakePivotRetractedPosition = 0.63; // rotations
 
@@ -262,7 +263,13 @@ public final class Constants {
     public static final double kIntakeRollerSpeed = 12.0 / 12.0;  // Full duty = 100% for 9:1 gearing (was 9V for 4:1 gearing)
     
     // Follower roller speed multiplier (0-1, where 1.0 = same as leader)
-    public static final double kIntakeRollerFollowerSpeedMultiplier = 0.4;
+    public static final double kIntakeRollerFollowerSpeedMultiplier = 0.5;
+
+    // Unjam detection and recovery thresholds
+    public static final double kUnjamRpmThreshold = 3000.0;        // RPM below this triggers jam detection
+    public static final double kUnjamCurrentThreshold = 18.0;      // Amps above this triggers jam detection
+    public static final double kUnjamDetectionTimeS = 0.4;         // Seconds to hold both conditions before triggering
+    public static final double kUnjamReverseTimeS = 0.6;           // Seconds to spin in reverse at max duty
   }
 
   /**

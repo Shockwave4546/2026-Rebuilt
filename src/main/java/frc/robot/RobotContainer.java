@@ -188,6 +188,12 @@ public class RobotContainer {
     // D-Pad Down: Wiggle intake (hold to continuously shuffle balls)
     new Trigger(() -> m_driverController.getPOV() == 180)
         .whileTrue(new WiggleIntakeCommand(m_intake, Integer.MAX_VALUE));
+
+    // D-Pad Left: Hold intake at partially deployed position (0.367) for testing
+    new Trigger(() -> m_driverController.getPOV() == 270)
+        .onTrue(new InstantCommand(
+            () -> m_intake.setTargetPosition(IntakeConstants.kIntakePivotPartiallyDeployedPosition),
+            m_intake));
   }
 
   /**

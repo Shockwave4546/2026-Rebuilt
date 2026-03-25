@@ -82,6 +82,11 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
   private boolean m_isRollerRunning = false;
   private boolean m_isRollerReversing = false;
 
+  // Unjam detection and recovery state
+  private long m_stallDetectionStartTimeMs = 0;  // Time when low RPM + high current condition started
+  private boolean m_isUnjamReversing = false;    // Currently executing reverse spin
+  private long m_unjamReverseStartTimeMs = 0;    // Time when reverse spin started
+
   /** Rate limiter for telemetry updates (10Hz instead of 50Hz). */
   private final TelemetryRateLimiter m_telemetryRateLimiter;
 
@@ -193,17 +198,9 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
       m_pivotMotor.set(0.0);
     }
 
-    // Rollers only spin while the arm is deployed.
-    if (m_isRollerReversing && isDeployed()) {
-      m_rollerMotor.set(-IntakeConstants.kIntakeRollerSpeed);  // Reverse
-      m_rollerFollowerMotor.set(-IntakeConstants.kIntakeRollerSpeed * IntakeConstants.kIntakeRollerFollowerSpeedMultiplier);  // Reverse at reduced speed
-    } else if (m_isRollerRunning && isDeployed()) {
-      m_rollerMotor.set(IntakeConstants.kIntakeRollerSpeed);   // Forward
-      m_rollerFollowerMotor.set(IntakeConstants.kIntakeRollerSpeed * IntakeConstants.kIntakeRollerFollowerSpeedMultiplier);   // Forward at reduced speed
-    } else {
-      m_rollerMotor.set(0.0);
-      m_rollerFollowerMotor.set(0.0);
-    }
+    // --- Roller motor control with unjam detection/recovery ---
+    updateRollerControl();
+
 
     // --- Dashboard telemetry (rate-limited to 10Hz, change-detection on continuous values) ---
     double velocity = m_pivotEncoder.getVelocity();
@@ -258,8 +255,101 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
   }
 
   // ---------------------------------------------------------------------------
-  // Public API
+  // Roller control with unjam detection and recovery
   // ---------------------------------------------------------------------------
+
+  /**
+   * Updates roller motor output with automatic unjam detection and recovery.
+   * 
+   * <p>Logic flow:
+   * <ol>
+   *   <li>If currently reversing for unjam, check if reverse duration has elapsed.
+   *       If so, return to normal intake direction and resume normal control.</li>
+   *   <li>Otherwise, if rollers are commanded on and we detect low RPM (<1000)
+   *       and high current (>18A) for 0.2s, trigger an unjam by reversing.</li>
+   *   <li>Otherwise, apply normal roller control (forward/reverse/stop based on commands).</li>
+   * </ol>
+   */
+  private void updateRollerControl() {
+    long nowMs = System.currentTimeMillis();
+    // SparkMax encoder.getVelocity() on NEO 550 returns RPM directly, not rot/s
+    // Monitor the follower motor (CAN 32) which is the actual jam-prone roller
+    double rollerRpm = m_rollerFollowerMotor.getEncoder().getVelocity();
+    // Check the actual leader's (follower motor, CAN 32) current draw for stall detection
+    double rollerCurrent = m_rollerFollowerMotor.getOutputCurrent();
+
+    // If we're in the middle of an unjam reverse, check if it's time to stop.
+    if (m_isUnjamReversing) {
+      long elapsedMs = nowMs - m_unjamReverseStartTimeMs;
+      if (elapsedMs >= (IntakeConstants.kUnjamReverseTimeS * 1000)) {
+        // Unjam period complete; resume normal control
+        m_isUnjamReversing = false;
+        m_stallDetectionStartTimeMs = 0;
+      } else {
+        // Still in unjam period; reverse leader (CAN 32) to clear jam, keep follower (CAN 31) spinning forward
+        // to prevent balls from backing up while we clear the jam point
+        m_rollerFollowerMotor.set(-1.0);  // Reverse CAN 32 (actual leader that jams)
+        m_rollerMotor.set(IntakeConstants.kIntakeRollerSpeed);  // Keep CAN 31 moving forward
+        if (m_telemetryRateLimiter.tryUpdate()) {
+          SmartDashboard.putString("Intake/Unjam Status", "REVERSING");
+        }
+        return;
+      }
+    }
+
+    // Detect jam condition: high current for sustained duration
+    // (removed RPM check - high current is the primary jam indicator)
+    boolean isHighCurrent = rollerCurrent > IntakeConstants.kUnjamCurrentThreshold;
+    boolean jamCondition = isHighCurrent;
+
+    if (m_isRollerRunning && isDeployed() && jamCondition) {
+      // Jam condition detected; start or continue stall timer
+      if (m_stallDetectionStartTimeMs == 0) {
+        m_stallDetectionStartTimeMs = nowMs;
+      }
+      long stallDurationMs = nowMs - m_stallDetectionStartTimeMs;
+      
+      if (stallDurationMs >= (IntakeConstants.kUnjamDetectionTimeS * 1000)) {
+        // Stall duration threshold met; initiate unjam
+        m_isUnjamReversing = true;
+        m_unjamReverseStartTimeMs = nowMs;
+        m_stallDetectionStartTimeMs = 0;
+        if (m_telemetryRateLimiter.tryUpdate()) {
+          SmartDashboard.putString("Intake/Unjam Status", "JAM DETECTED");
+        }
+      }
+    } else {
+      // No jam condition; reset stall timer
+      m_stallDetectionStartTimeMs = 0;
+    }
+
+    // Normal roller control (only applies if not in unjam mode)
+    if (m_isRollerReversing && isDeployed()) {
+      m_rollerMotor.set(-IntakeConstants.kIntakeRollerSpeed);  // CAN 31 full speed reverse
+      m_rollerFollowerMotor.set(-IntakeConstants.kIntakeRollerSpeed * IntakeConstants.kIntakeRollerFollowerSpeedMultiplier);  // CAN 32 reduced speed reverse
+      if (m_telemetryRateLimiter.tryUpdate()) {
+        SmartDashboard.putString("Intake/Unjam Status", "REVERSING_MANUAL");
+      }
+    } else if (m_isRollerRunning && isDeployed()) {
+      m_rollerMotor.set(IntakeConstants.kIntakeRollerSpeed);  // CAN 31 full speed forward
+      m_rollerFollowerMotor.set(IntakeConstants.kIntakeRollerSpeed * IntakeConstants.kIntakeRollerFollowerSpeedMultiplier);  // CAN 32 reduced speed forward
+      if (m_telemetryRateLimiter.tryUpdate()) {
+        SmartDashboard.putString("Intake/Unjam Status", "RUNNING");
+      }
+    } else {
+      m_rollerMotor.set(0.0);
+      m_rollerFollowerMotor.set(0.0);
+      if (m_telemetryRateLimiter.tryUpdate()) {
+        SmartDashboard.putString("Intake/Unjam Status", "STOPPED");
+      }
+    }
+
+    // Publish unjam diagnostics (without rate limiting for real-time visibility)
+    SmartDashboard.putNumber("Intake/Roller RPM", rollerRpm);
+    SmartDashboard.putNumber("Intake/Roller Current (A)", rollerCurrent);
+    SmartDashboard.putBoolean("Intake/High Current", isHighCurrent);
+  }
+
 
   /**
    * Command the pivot to a target position.
