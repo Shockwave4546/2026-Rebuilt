@@ -87,6 +87,10 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
   private boolean m_isUnjamReversing = false;    // Currently executing reverse spin
   private long m_unjamReverseStartTimeMs = 0;    // Time when reverse spin started
 
+  // Tunable roller speeds (read from SmartDashboard each cycle for live tuning during testing)
+  private double m_innerRollerSpeed = IntakeConstants.kIntakeInnerRollerForwardSpeed;
+  private double m_outerRollerSpeedMultiplier = IntakeConstants.kIntakeOuterRollerForwardSpeed;
+
   /** Rate limiter for telemetry updates (10Hz instead of 50Hz). */
   private final TelemetryRateLimiter m_telemetryRateLimiter;
 
@@ -142,6 +146,10 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
 
     // Rate limiter for telemetry (10Hz instead of 50Hz)
     m_telemetryRateLimiter = new TelemetryRateLimiter(10.0);
+
+    // Seed dashboard with tunable roller speed controls (for live testing)
+    SmartDashboard.putNumber("Intake/Tuning/Inner Roller Speed", IntakeConstants.kIntakeInnerRollerForwardSpeed);
+    SmartDashboard.putNumber("Intake/Tuning/Outer Speed Multiplier", IntakeConstants.kIntakeOuterRollerForwardSpeed);
   }
 
   // ---------------------------------------------------------------------------
@@ -150,6 +158,10 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // --- Read tunable roller speeds from dashboard (for live testing) ---
+    m_innerRollerSpeed = SmartDashboard.getNumber("Intake/Tuning/Inner Roller Speed", IntakeConstants.kIntakeInnerRollerForwardSpeed);
+    m_outerRollerSpeedMultiplier = SmartDashboard.getNumber("Intake/Tuning/Outer Speed Multiplier", IntakeConstants.kIntakeOuterRollerForwardSpeed);
+
     double currentPosition = getEncoderPosition();
 
     if (m_isPivotEnabled && m_targetPosition != null) {
@@ -252,6 +264,10 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     if (m_telemetryRateLimiter.hasChangedBoolean("Intake/Roller Running", m_isRollerRunning)) {
       SmartDashboard.putBoolean("Intake/Roller Running", m_isRollerRunning);
     }
+
+    // Always publish tuning controls (no rate limiting — need immediate updates)
+    SmartDashboard.putNumber("Intake/Tuning/Inner Roller Speed", m_innerRollerSpeed);
+    SmartDashboard.putNumber("Intake/Tuning/Outer Speed Multiplier", m_outerRollerSpeedMultiplier);
   }
 
   // ---------------------------------------------------------------------------
@@ -272,8 +288,7 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
    */
   private void updateRollerControl() {
     long nowMs = System.currentTimeMillis();
-    // Monitor outer roller (CAN 32) — ground-facing, jam-prone
-    double outerRpm = m_outerRollerMotor.getEncoder().getVelocity();
+    // Check the actual outer roller's (CAN 32) current draw for stall detection
     double outerCurrent = m_outerRollerMotor.getOutputCurrent();
 
     // If we're in the middle of an unjam reverse, check if it's time to stop.
@@ -320,14 +335,14 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
 
     // Normal roller control (only applies if not in unjam mode)
     if (m_isRollerReversing && isDeployed()) {
-      m_innerRollerMotor.set(IntakeConstants.kIntakeInnerRollerReverseSpeed);
-      m_outerRollerMotor.set(IntakeConstants.kIntakeOuterRollerReverseSpeed);
+      m_innerRollerMotor.set(-m_innerRollerSpeed);  // CAN 31 full speed reverse
+      m_outerRollerMotor.set(-m_innerRollerSpeed * m_outerRollerSpeedMultiplier);  // CAN 32 reduced speed reverse
       if (m_telemetryRateLimiter.tryUpdate()) {
         SmartDashboard.putString("Intake/Unjam Status", "REVERSING_MANUAL");
       }
     } else if (m_isRollerRunning && isDeployed()) {
-      m_innerRollerMotor.set(IntakeConstants.kIntakeInnerRollerForwardSpeed);
-      m_outerRollerMotor.set(IntakeConstants.kIntakeOuterRollerForwardSpeed);
+      m_innerRollerMotor.set(m_innerRollerSpeed);  // CAN 31 full speed forward
+      m_outerRollerMotor.set(m_innerRollerSpeed * m_outerRollerSpeedMultiplier);  // CAN 32 reduced speed forward
       if (m_telemetryRateLimiter.tryUpdate()) {
         SmartDashboard.putString("Intake/Unjam Status", "RUNNING");
       }
@@ -339,10 +354,14 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
       }
     }
 
-    // Publish roller diagnostics (no rate limiting — real-time visibility)
-    SmartDashboard.putNumber("Intake/Outer RPM", outerRpm);
-    SmartDashboard.putNumber("Intake/Outer Current (A)", outerCurrent);
-    SmartDashboard.putBoolean("Intake/High Current", isHighCurrent);
+    // Roller diagnostics (no rate limiting — real-time visibility for speed tuning)
+    SmartDashboard.putNumber("Intake/Inner RPM",         m_innerRollerMotor.getEncoder().getVelocity());
+    SmartDashboard.putNumber("Intake/Inner Current A",   m_innerRollerMotor.getOutputCurrent());
+    SmartDashboard.putNumber("Intake/Inner Output",      m_innerRollerMotor.getAppliedOutput());
+    SmartDashboard.putNumber("Intake/Outer RPM",         m_outerRollerMotor.getEncoder().getVelocity());
+    SmartDashboard.putNumber("Intake/Outer Current A",   m_outerRollerMotor.getOutputCurrent());
+    SmartDashboard.putNumber("Intake/Outer Output",      m_outerRollerMotor.getAppliedOutput());
+    SmartDashboard.putBoolean("Intake/High Current",     isHighCurrent);
   }
 
 

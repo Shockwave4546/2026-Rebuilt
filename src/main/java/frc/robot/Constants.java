@@ -262,9 +262,9 @@ public final class Constants {
 
     // Roller speeds (duty cycle, -1 to 1) — explicit per-motor, no multiplier hacks
     public static final double kIntakeInnerRollerForwardSpeed =  1.0;
-    public static final double kIntakeOuterRollerForwardSpeed =  0.5;
+    public static final double kIntakeOuterRollerForwardSpeed =  1.0;  // Now 1.0 for tuning
     public static final double kIntakeInnerRollerReverseSpeed = -1.0;
-    public static final double kIntakeOuterRollerReverseSpeed = -0.5;
+    public static final double kIntakeOuterRollerReverseSpeed = -1.0;  // Now -1.0 for tuning
     // Unjam: outer reverses to clear jam, inner keeps pushing forward
     public static final double kIntakeUnjamInnerSpeed =  1.0;
     public static final double kIntakeUnjamOuterSpeed = -1.0;
