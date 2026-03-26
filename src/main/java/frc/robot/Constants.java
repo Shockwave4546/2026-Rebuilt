@@ -201,14 +201,15 @@ public final class Constants {
   public static final class IntakeConstants {
     // Motor CAN IDs
     public static final int kIntakePivotMotorCanId = 30;
-    public static final int kIntakeRollerMotorCanId = 31;
-    public static final int kIntakeRollerFollowerMotorCanId = 32;
+    public static final int kIntakeInnerRollerCanId = 31;  // Inner roller (closer to robot)
+    public static final int kIntakeOuterRollerCanId = 32;  // Outer roller (ground-facing)
 
-    // Motor inversion
+    // Motor inversion — both motors mounted opposite to each other
+    // Inner (31) shaft faces left, outer (32) shaft faces right
+    // Both need inverted=true so shafts rotate clockwise, making rollers spin inward (intake)
     public static final boolean kIntakePivotMotorInverted = true;
-    public static final boolean kIntakeRollerMotorInverted = true;
-    // Both rollers should spin in the same direction (both inverted)
-    public static final boolean kIntakeRollerFollowerMotorInverted = true;
+    public static final boolean kIntakeInnerRollerInverted = true;
+    public static final boolean kIntakeOuterRollerInverted = true;
 
     // Encoder configuration (REV Through-Bore Encoder V2 on SparkMax)
     public static final boolean kIntakePivotEncoderInverted = false;
@@ -259,11 +260,14 @@ public final class Constants {
     public static final int kIntakePivotCurrentLimit  = 70;  // NEO on pivot (increased for heavier intake)
     public static final int kIntakeRollerCurrentLimit = 20;  // NEO 550 on roller
 
-    // Roller speed (duty cycle, 0-1)
-    public static final double kIntakeRollerSpeed = 12.0 / 12.0;  // Full duty = 100% for 9:1 gearing (was 9V for 4:1 gearing)
-    
-    // Follower roller speed multiplier (0-1, where 1.0 = same as leader)
-    public static final double kIntakeRollerFollowerSpeedMultiplier = 0.5;
+    // Roller speeds (duty cycle, -1 to 1) — explicit per-motor, no multiplier hacks
+    public static final double kIntakeInnerRollerForwardSpeed =  1.0;
+    public static final double kIntakeOuterRollerForwardSpeed =  0.5;
+    public static final double kIntakeInnerRollerReverseSpeed = -1.0;
+    public static final double kIntakeOuterRollerReverseSpeed = -0.5;
+    // Unjam: outer reverses to clear jam, inner keeps pushing forward
+    public static final double kIntakeUnjamInnerSpeed =  1.0;
+    public static final double kIntakeUnjamOuterSpeed = -1.0;
 
     // Unjam detection and recovery thresholds
     public static final double kUnjamRpmThreshold = 3000.0;        // RPM below this triggers jam detection

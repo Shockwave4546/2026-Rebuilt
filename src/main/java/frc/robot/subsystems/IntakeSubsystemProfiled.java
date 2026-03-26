@@ -54,8 +54,8 @@ import frc.robot.util.TelemetryRateLimiter;
 public class IntakeSubsystemProfiled extends SubsystemBase {
 
   private final SparkMax m_pivotMotor;
-  private final SparkMax m_rollerMotor;
-  private final SparkMax m_rollerFollowerMotor;
+  private final SparkMax m_innerRollerMotor;  // CAN 31 — inner roller (closer to robot)
+  private final SparkMax m_outerRollerMotor;  // CAN 32 — outer roller (ground-facing)
 
   private final AbsoluteEncoder m_pivotEncoder;
 
@@ -121,24 +121,24 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     // starts from actual position/velocity — no step change at enable.
     resetPID();
 
-    // --- Roller motor (NEO 550, open-loop only) ---
-    m_rollerMotor = new SparkMax(IntakeConstants.kIntakeRollerMotorCanId, MotorType.kBrushless);
-    SparkMaxConfig rollerConfig = new SparkMaxConfig();
-    rollerConfig
-        .inverted(IntakeConstants.kIntakeRollerMotorInverted)
+    // --- Inner roller motor (CAN 31, NEO 550, open-loop only) ---
+    m_innerRollerMotor = new SparkMax(IntakeConstants.kIntakeInnerRollerCanId, MotorType.kBrushless);
+    SparkMaxConfig innerRollerConfig = new SparkMaxConfig();
+    innerRollerConfig
+        .inverted(IntakeConstants.kIntakeInnerRollerInverted)
         .idleMode(IdleMode.kCoast)
         .smartCurrentLimit(IntakeConstants.kIntakeRollerCurrentLimit);
-    m_rollerMotor.configure(rollerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_innerRollerMotor.configure(innerRollerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    // --- Roller follower motor (NEO 550, hardware-slaved follower) ---
-    // Mounted facing opposite direction, so inverted relative to leader
-    m_rollerFollowerMotor = new SparkMax(IntakeConstants.kIntakeRollerFollowerMotorCanId, MotorType.kBrushless);
-    SparkMaxConfig rollerFollowerConfig = new SparkMaxConfig();
-    rollerFollowerConfig
-        .inverted(IntakeConstants.kIntakeRollerFollowerMotorInverted)
+    // --- Outer roller motor (CAN 32, NEO 550, open-loop only) ---
+    // Faces opposite direction to inner roller, so inversion differs
+    m_outerRollerMotor = new SparkMax(IntakeConstants.kIntakeOuterRollerCanId, MotorType.kBrushless);
+    SparkMaxConfig outerRollerConfig = new SparkMaxConfig();
+    outerRollerConfig
+        .inverted(IntakeConstants.kIntakeOuterRollerInverted)
         .idleMode(IdleMode.kCoast)
         .smartCurrentLimit(IntakeConstants.kIntakeRollerCurrentLimit);
-    m_rollerFollowerMotor.configure(rollerFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_outerRollerMotor.configure(outerRollerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     // Rate limiter for telemetry (10Hz instead of 50Hz)
     m_telemetryRateLimiter = new TelemetryRateLimiter(10.0);
@@ -272,11 +272,9 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
    */
   private void updateRollerControl() {
     long nowMs = System.currentTimeMillis();
-    // SparkMax encoder.getVelocity() on NEO 550 returns RPM directly, not rot/s
-    // Monitor the follower motor (CAN 32) which is the actual jam-prone roller
-    double rollerRpm = m_rollerFollowerMotor.getEncoder().getVelocity();
-    // Check the actual leader's (follower motor, CAN 32) current draw for stall detection
-    double rollerCurrent = m_rollerFollowerMotor.getOutputCurrent();
+    // Monitor outer roller (CAN 32) — ground-facing, jam-prone
+    double outerRpm = m_outerRollerMotor.getEncoder().getVelocity();
+    double outerCurrent = m_outerRollerMotor.getOutputCurrent();
 
     // If we're in the middle of an unjam reverse, check if it's time to stop.
     if (m_isUnjamReversing) {
@@ -286,10 +284,9 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
         m_isUnjamReversing = false;
         m_stallDetectionStartTimeMs = 0;
       } else {
-        // Still in unjam period; reverse leader (CAN 32) to clear jam, keep follower (CAN 31) spinning forward
-        // to prevent balls from backing up while we clear the jam point
-        m_rollerFollowerMotor.set(-1.0);  // Reverse CAN 32 (actual leader that jams)
-        m_rollerMotor.set(IntakeConstants.kIntakeRollerSpeed);  // Keep CAN 31 moving forward
+        // Outer reverses to clear jam; inner keeps pushing forward to prevent ball backup
+        m_outerRollerMotor.set(IntakeConstants.kIntakeUnjamOuterSpeed);
+        m_innerRollerMotor.set(IntakeConstants.kIntakeUnjamInnerSpeed);
         if (m_telemetryRateLimiter.tryUpdate()) {
           SmartDashboard.putString("Intake/Unjam Status", "REVERSING");
         }
@@ -298,17 +295,15 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     }
 
     // Detect jam condition: high current for sustained duration
-    // (removed RPM check - high current is the primary jam indicator)
-    boolean isHighCurrent = rollerCurrent > IntakeConstants.kUnjamCurrentThreshold;
-    boolean jamCondition = isHighCurrent;
+    boolean isHighCurrent = outerCurrent > IntakeConstants.kUnjamCurrentThreshold;
 
-    if (m_isRollerRunning && isDeployed() && jamCondition) {
+    if (m_isRollerRunning && isDeployed() && isHighCurrent) {
       // Jam condition detected; start or continue stall timer
       if (m_stallDetectionStartTimeMs == 0) {
         m_stallDetectionStartTimeMs = nowMs;
       }
       long stallDurationMs = nowMs - m_stallDetectionStartTimeMs;
-      
+
       if (stallDurationMs >= (IntakeConstants.kUnjamDetectionTimeS * 1000)) {
         // Stall duration threshold met; initiate unjam
         m_isUnjamReversing = true;
@@ -325,28 +320,28 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
 
     // Normal roller control (only applies if not in unjam mode)
     if (m_isRollerReversing && isDeployed()) {
-      m_rollerMotor.set(-IntakeConstants.kIntakeRollerSpeed);  // CAN 31 full speed reverse
-      m_rollerFollowerMotor.set(-IntakeConstants.kIntakeRollerSpeed * IntakeConstants.kIntakeRollerFollowerSpeedMultiplier);  // CAN 32 reduced speed reverse
+      m_innerRollerMotor.set(IntakeConstants.kIntakeInnerRollerReverseSpeed);
+      m_outerRollerMotor.set(IntakeConstants.kIntakeOuterRollerReverseSpeed);
       if (m_telemetryRateLimiter.tryUpdate()) {
         SmartDashboard.putString("Intake/Unjam Status", "REVERSING_MANUAL");
       }
     } else if (m_isRollerRunning && isDeployed()) {
-      m_rollerMotor.set(IntakeConstants.kIntakeRollerSpeed);  // CAN 31 full speed forward
-      m_rollerFollowerMotor.set(IntakeConstants.kIntakeRollerSpeed * IntakeConstants.kIntakeRollerFollowerSpeedMultiplier);  // CAN 32 reduced speed forward
+      m_innerRollerMotor.set(IntakeConstants.kIntakeInnerRollerForwardSpeed);
+      m_outerRollerMotor.set(IntakeConstants.kIntakeOuterRollerForwardSpeed);
       if (m_telemetryRateLimiter.tryUpdate()) {
         SmartDashboard.putString("Intake/Unjam Status", "RUNNING");
       }
     } else {
-      m_rollerMotor.set(0.0);
-      m_rollerFollowerMotor.set(0.0);
+      m_innerRollerMotor.set(0.0);
+      m_outerRollerMotor.set(0.0);
       if (m_telemetryRateLimiter.tryUpdate()) {
         SmartDashboard.putString("Intake/Unjam Status", "STOPPED");
       }
     }
 
-    // Publish unjam diagnostics (without rate limiting for real-time visibility)
-    SmartDashboard.putNumber("Intake/Roller RPM", rollerRpm);
-    SmartDashboard.putNumber("Intake/Roller Current (A)", rollerCurrent);
+    // Publish roller diagnostics (no rate limiting — real-time visibility)
+    SmartDashboard.putNumber("Intake/Outer RPM", outerRpm);
+    SmartDashboard.putNumber("Intake/Outer Current (A)", outerCurrent);
     SmartDashboard.putBoolean("Intake/High Current", isHighCurrent);
   }
 
@@ -385,8 +380,8 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     m_targetPosition  = null;
     m_isRollerRunning = false;
     m_pivotMotor.set(0.0);
-    m_rollerMotor.set(0.0);
-    m_rollerFollowerMotor.set(0.0);
+    m_innerRollerMotor.set(0.0);
+    m_outerRollerMotor.set(0.0);
   }
 
   /** Enable the intake rollers (they will only spin while the arm is deployed). */
