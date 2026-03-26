@@ -10,6 +10,13 @@ import java.util.Map;
  * to reduce network bandwidth by only publishing when values meaningfully change.
  */
 public class TelemetryRateLimiter {
+  /**
+   * Set to false to bypass all rate limiting and change detection.
+   * SmartDashboard will update every loop cycle (50Hz) when disabled.
+   * Set to true to re-enable rate limiting.
+   */
+  public static boolean kEnabled = false;
+
   private final double m_periodSeconds;
   private double m_lastUpdateTime;
   
@@ -47,6 +54,7 @@ public class TelemetryRateLimiter {
    * @return true if the update should be published, false otherwise
    */
   public boolean tryUpdate() {
+    if (!kEnabled) return true;
     double currentTime = Timer.getFPGATimestamp();
     if (currentTime - m_lastUpdateTime >= m_periodSeconds) {
       m_lastUpdateTime = currentTime;
@@ -64,6 +72,7 @@ public class TelemetryRateLimiter {
    * @return true if the value changed by more than threshold or it's time for a periodic update
    */
   public boolean hasChangedNumber(String key, double value) {
+    if (!kEnabled) return true;
     // Always respect time-based rate limit
     if (!tryUpdate()) {
       return false;
@@ -94,6 +103,7 @@ public class TelemetryRateLimiter {
    * @return true if the value changed or it's time for a periodic update
    */
   public boolean hasChangedBoolean(String key, boolean value) {
+    if (!kEnabled) return true;
     // Always respect time-based rate limit
     if (!tryUpdate()) {
       return false;
@@ -124,6 +134,7 @@ public class TelemetryRateLimiter {
    * @return true if the value changed or it's time for a periodic update
    */
   public boolean hasChangedString(String key, String value) {
+    if (!kEnabled) return true;
     // Always respect time-based rate limit
     if (!tryUpdate()) {
       return false;
