@@ -277,6 +277,11 @@ public final class Constants {
     public static final double kUnjamCurrentThreshold = 18.0;      // Amps above this triggers jam detection
     public static final double kUnjamDetectionTimeS = 0.2;         // Seconds to hold both conditions before triggering
     public static final double kUnjamReverseTimeS = 0.4;           // Seconds to spin in reverse at max duty
+
+    // Pivot current limiting (protect gears from skipping while deploying against obstacle)
+    // Instantly reduces duty cycle when deploying downward against high current
+    public static final double kPivotStallCurrentLimit = 10;       // Amps - threshold to trigger current limiting
+    public static final double kPivotStallBackoffDuty = 0.0;       // Reduced duty cycle to prevent gear slip (30%)
   }
 
   /**

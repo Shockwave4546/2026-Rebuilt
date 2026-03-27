@@ -87,6 +87,9 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
   private boolean m_isUnjamReversing = false;    // Currently executing reverse spin
   private long m_unjamReverseStartTimeMs = 0;    // Time when reverse spin started
 
+  // Pivot current limiting (protecting gears from skipping while deploying)
+  private boolean m_isPivotStalled = false;      // Currently in current-limit mode (reduced duty cycle)
+
   // Tunable roller speeds (read from SmartDashboard each cycle for live tuning during testing)
   private double m_innerRollerSpeed = IntakeConstants.kIntakeInnerRollerForwardSpeed;
   private double m_outerRollerSpeedMultiplier = IntakeConstants.kIntakeOuterRollerForwardSpeed;
@@ -163,6 +166,7 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     m_outerRollerSpeedMultiplier = SmartDashboard.getNumber("Intake/Tuning/Outer Speed Multiplier", IntakeConstants.kIntakeOuterRollerForwardSpeed);
 
     double currentPosition = getEncoderPosition();
+    double pivotCurrent = m_pivotMotor.getOutputCurrent();
 
     if (m_isPivotEnabled && m_targetPosition != null) {
       // Step the profile forward and compute PID correction.
@@ -195,6 +199,21 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
           pidOutput + ffOutput,
           IntakeConstants.kIntakePivotMinOutput,
           IntakeConstants.kIntakePivotMaxOutput);
+
+      // --- Instant current limiting: Protect gears from skipping when deploying against obstacle ---
+      // Check if deploying downward against resistance (high current)
+      boolean isDeploying = setpoint.position < IntakeConstantsProfiled.kGravityZeroPosition;
+      boolean isMovingDown = currentPosition > setpoint.position;
+      boolean isHighCurrent = pivotCurrent > IntakeConstants.kPivotStallCurrentLimit;
+
+      if (isDeploying && isMovingDown && isHighCurrent) {
+        // Immediately stop the intake to prevent gear skipping
+        m_isPivotStalled = true;
+        stop();  // Clears setpoint and stops pivot control
+        output = 0.0;
+      }
+
+      SmartDashboard.putBoolean("Intake/Pivot Current Limited", m_isPivotStalled);
 
       // Duty-cycle directly to SparkMax — REV closed-loop firmware bypassed.
       m_pivotMotor.set(output);
