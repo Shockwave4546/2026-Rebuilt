@@ -290,6 +290,8 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     long nowMs = System.currentTimeMillis();
     // Check the actual outer roller's (CAN 32) current draw for stall detection
     double outerCurrent = m_outerRollerMotor.getOutputCurrent();
+    // Rollers allowed to run up through partial-deploy position (position-based, not just fully deployed)
+    boolean rollersAllowed = getEncoderPosition() < IntakeConstants.kIntakeRollerMaxRunPosition;
 
     // If we're in the middle of an unjam reverse, check if it's time to stop.
     if (m_isUnjamReversing) {
@@ -312,13 +314,13 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     // Detect jam condition: high current for sustained duration
     boolean isHighCurrent = outerCurrent > IntakeConstants.kUnjamCurrentThreshold;
 
-    if (m_isRollerRunning && isDeployed() && isHighCurrent) {
+    if (m_isRollerRunning && rollersAllowed && isHighCurrent) {
       // Jam condition detected; start or continue stall timer
       if (m_stallDetectionStartTimeMs == 0) {
         m_stallDetectionStartTimeMs = nowMs;
       }
       long stallDurationMs = nowMs - m_stallDetectionStartTimeMs;
-
+      
       if (stallDurationMs >= (IntakeConstants.kUnjamDetectionTimeS * 1000)) {
         // Stall duration threshold met; initiate unjam
         m_isUnjamReversing = true;
@@ -334,13 +336,13 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     }
 
     // Normal roller control (only applies if not in unjam mode)
-    if (m_isRollerReversing && isDeployed()) {
+    if (m_isRollerReversing && rollersAllowed) {
       m_innerRollerMotor.set(-m_innerRollerSpeed);  // CAN 31 full speed reverse
       m_outerRollerMotor.set(-m_innerRollerSpeed * m_outerRollerSpeedMultiplier);  // CAN 32 reduced speed reverse
       if (m_telemetryRateLimiter.tryUpdate()) {
         SmartDashboard.putString("Intake/Unjam Status", "REVERSING_MANUAL");
       }
-    } else if (m_isRollerRunning && isDeployed()) {
+    } else if (m_isRollerRunning && rollersAllowed) {
       m_innerRollerMotor.set(m_innerRollerSpeed);  // CAN 31 full speed forward
       m_outerRollerMotor.set(m_innerRollerSpeed * m_outerRollerSpeedMultiplier);  // CAN 32 reduced speed forward
       if (m_telemetryRateLimiter.tryUpdate()) {
@@ -363,8 +365,6 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
     SmartDashboard.putNumber("Intake/Outer Output",      m_outerRollerMotor.getAppliedOutput());
     SmartDashboard.putBoolean("Intake/High Current",     isHighCurrent);
   }
-
-
   /**
    * Command the pivot to a target position.
    *

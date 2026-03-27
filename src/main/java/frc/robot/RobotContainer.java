@@ -8,7 +8,7 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.OIConstants;
-import frc.robot.commands.CoordinatedHeadingCommand;
+import frc.robot.commands.Snap180HeadingCommand;
 import frc.robot.commands.SnapHeadingCommand;
 import frc.robot.commands.WiggleIntakeCommand;
 import frc.robot.Constants.IntakeConstants;
@@ -92,7 +92,7 @@ public class RobotContainer {
             () -> m_robotDrive.zeroHeading(),
             m_robotDrive));
 
-    // X button: Toggle intake up/down (deploy/retract pivot)
+    // X button: Toggle intake between deployed and partially deployed position
     new JoystickButton(m_driverController, XboxController.Button.kX.value)
         .onTrue(new InstantCommand(
             () -> {
@@ -101,8 +101,8 @@ public class RobotContainer {
                 // Deploy intake
                 m_intake.setTargetPosition(IntakeConstants.kIntakePivotDeployedPosition);
               } else {
-                // Retract intake
-                m_intake.setTargetPosition(IntakeConstants.kIntakePivotRetractedPosition);
+                // Partially deploy for testing
+                m_intake.setTargetPosition(IntakeConstants.kIntakePivotPartiallyDeployedPosition);
               }
             },
             m_intake));
@@ -121,13 +121,12 @@ public class RobotContainer {
               m_launcher.stopFeeder();
             },
             m_indexer, m_launcher));
-    // A button: Coordinated heading (hold) — intake faces direction of travel
+    // A button: Snap to 0° or 180° (hold) — simple heading control
     new JoystickButton(m_driverController, XboxController.Button.kA.value)
-        .whileTrue(new CoordinatedHeadingCommand(
+        .whileTrue(new Snap180HeadingCommand(
             m_robotDrive,
             () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getLeftY(), OIConstants.kDriveDeadband)),
-            () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband)),
-            () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getRightX(), OIConstants.kDriveDeadband))));
+            () -> DriveSubsystem.applyThrustExpo(-MathUtil.applyDeadband(m_driverController.getLeftX(), OIConstants.kDriveDeadband))));
 
     // B button: Snap to closest 45° angle, then fine-tune with right stick quadrants
     new JoystickButton(m_driverController, XboxController.Button.kB.value)
@@ -161,11 +160,14 @@ public class RobotContainer {
             () -> m_intake.stopRollers(),
             m_intake));
 
-    // LB button: Interrupt intake position controller (safety stop for intake arm)
+    // LB button: Shoot long distance (hold)
     new JoystickButton(m_driverController, XboxController.Button.kLeftBumper.value)
         .onTrue(new InstantCommand(
-            () -> m_intake.stop(),  // Stops all intake control (pivot + rollers)
-            m_intake));
+            () -> m_launcher.shootLong(),
+            m_launcher))
+        .onFalse(new InstantCommand(
+            () -> m_launcher.stopLauncher(),
+            m_launcher));
 
     // LT (Left Trigger): Shoot (hold) - spins up shooter, feeds + indexes when at target RPM
     new Trigger(() -> m_driverController.getLeftTriggerAxis() > 0.1)
@@ -176,23 +178,25 @@ public class RobotContainer {
             () -> m_launcher.stopLauncher(),
             m_launcher));
 
-    // D-Pad Up: Shoot long distance (hold)
-    new Trigger(() -> m_driverController.getPOV() == 0)
-        .onTrue(new InstantCommand(
-            () -> m_launcher.shootLong(),
-            m_launcher))
-        .onFalse(new InstantCommand(
-            () -> m_launcher.stopLauncher(),
-            m_launcher));
+    // D-Pad Up: (Reserved for future use)
 
     // D-Pad Down: Wiggle intake (hold to continuously shuffle balls)
     new Trigger(() -> m_driverController.getPOV() == 180)
         .whileTrue(new WiggleIntakeCommand(m_intake, Integer.MAX_VALUE));
 
-    // D-Pad Left: Hold intake at partially deployed position (0.367) for testing
+    // D-Pad Left: Toggle intake between partially deployed and fully retracted
     new Trigger(() -> m_driverController.getPOV() == 270)
         .onTrue(new InstantCommand(
-            () -> m_intake.setTargetPosition(IntakeConstants.kIntakePivotPartiallyDeployedPosition),
+            () -> {
+              m_intakePivotToggleState = !m_intakePivotToggleState;
+              if (m_intakePivotToggleState) {
+                // Partially deploy
+                m_intake.setTargetPosition(IntakeConstants.kIntakePivotPartiallyDeployedPosition);
+              } else {
+                // Fully retract
+                m_intake.setTargetPosition(IntakeConstants.kIntakePivotRetractedPosition);
+              }
+            },
             m_intake));
   }
 

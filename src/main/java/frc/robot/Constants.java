@@ -98,14 +98,14 @@ public final class Constants {
   }
 
   public static final class HeadingControllerConstants {
-    // PID gains for heading control
-    public static final double kHeadingP = 0.0048;//.00015 is close
+    // PID gains for heading control (reduced by 25% to eliminate jitter)
+    public static final double kHeadingP = 0.01125;  // Was 0.015, reduced 25%
     public static final double kHeadingI = 0.0;
-    public static final double kHeadingD = 0.00008;
+    public static final double kHeadingD = 0.00006;  // Was 0.00008, reduced 25%
     
     // Feed-forward gain for heading control
-    // Helps overcome friction and provides faster response
-    public static final double kHeadingFF = 0.006;//.006 small oscillations
+    // Helps overcome friction and provides faster response (reduced 25% to eliminate jitter)
+    public static final double kHeadingFF = 0.01125;  // Was 0.015, reduced 25%
     
     // Maximum rotation speed for heading controller (0.0 to 1.0)
     public static final double kMaxHeadingRotationSpeed = 10.0;
@@ -230,6 +230,9 @@ public final class Constants {
     public static final double kIntakePivotDeployedThreshold  = kIntakePivotDeployedPosition + 0.05;
     public static final double kIntakePivotRetractedThreshold = kIntakePivotRetractedPosition - 0.05;
 
+    // Maximum position for roller to run (allows partial deploy, stops at retracted)
+    public static final double kIntakeRollerMaxRunPosition = 0.5;  // Rollers run below this position
+
     // MAXMotion PID gains (slot 0, encoder units = rotations)
     // kP: volts per rotation of error; kD dampen oscillations at setpoint
     public static final double kP_IntakePivot = 0.0;  // 18 for old intake position
@@ -261,7 +264,7 @@ public final class Constants {
     public static final int kIntakeRollerCurrentLimit = 20;  // NEO 550 on roller
 
     // Roller speeds (duty cycle, -1 to 1) — explicit per-motor, no multiplier hacks
-    public static final double kIntakeInnerRollerForwardSpeed =  1.0;
+    public static final double kIntakeInnerRollerForwardSpeed =  0.8;
     public static final double kIntakeOuterRollerForwardSpeed =  1.0;  // Now 1.0 for tuning
     public static final double kIntakeInnerRollerReverseSpeed = -1.0;
     public static final double kIntakeOuterRollerReverseSpeed = -1.0;  // Now -1.0 for tuning
@@ -272,8 +275,8 @@ public final class Constants {
     // Unjam detection and recovery thresholds
     public static final double kUnjamRpmThreshold = 3000.0;        // RPM below this triggers jam detection
     public static final double kUnjamCurrentThreshold = 18.0;      // Amps above this triggers jam detection
-    public static final double kUnjamDetectionTimeS = 0.4;         // Seconds to hold both conditions before triggering
-    public static final double kUnjamReverseTimeS = 0.6;           // Seconds to spin in reverse at max duty
+    public static final double kUnjamDetectionTimeS = 0.2;         // Seconds to hold both conditions before triggering
+    public static final double kUnjamReverseTimeS = 0.4;           // Seconds to spin in reverse at max duty
   }
 
   /**
@@ -377,7 +380,7 @@ public final class Constants {
     // Target shooter speeds (RPM) — two presets for short and long distance shots
     public static final double kShooterTargetRpm = 2900.0;  // Default (for backwards compatibility)
     public static final double kShooterShortRpm = 2900.0;   // Close-range shot
-    public static final double kShooterLongRpm  = 3450.0;   // Long-range shot
+    public static final double kShooterLongRpm  = 3550.0;   // Long-range shot
 
     // Tolerance for "at speed" check (RPM)
     public static final double kShooterRpmTolerance = 150.0;
