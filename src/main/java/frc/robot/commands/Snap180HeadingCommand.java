@@ -58,45 +58,44 @@ public class Snap180HeadingCommand extends Command {
   public void initialize() {
     // Snap to the closest of 0° or 180°
     double currentHeading = m_driveSubsystem.getHeading();
-    
-    // Normalize to -180 to 180 (already in this range from Pigeon)
-    double normalized = MathUtil.angleModulus(currentHeading);
-    
-    // Calculate shortest distance to each target
-    double absNorm = Math.abs(normalized);
-    
-    // Distance to 0°
-    double distanceTo0 = absNorm;
-    
-    // Distance to 180°
-    double distanceTo180 = 180 - absNorm;
-    
-    // Snap to whichever is closer
-    if (distanceTo0 <= distanceTo180) {
-      m_targetHeading = 0;
-    } else {
-      m_targetHeading = 180;
-    }
+    m_targetHeading = snapToClosestTarget(currentHeading);
     
     SmartDashboard.putNumber("Snap180/Initial Snap", m_targetHeading);
+  }
+
+  /**
+   * Determines which target (0° or 180°) is closest to the current heading.
+   * Uses the same calculation method as SnapHeadingCommand for consistency.
+   */
+  private double snapToClosestTarget(double currentHeading) {
+    // Normalize to 0-360 range for easier comparison
+    double normalized = ((currentHeading % 360) + 360) % 360;
+    
+    // Calculate shortest angular distance to 0°
+    double distTo0 = normalized;
+    if (distTo0 > 180) {
+      distTo0 = 360 - distTo0;
+    }
+    
+    // Calculate shortest angular distance to 180°
+    double distTo180 = Math.abs(normalized - 180);
+    if (distTo180 > 180) {
+      distTo180 = 360 - distTo180;
+    }
+    
+    // Return whichever is closer
+    return distTo0 <= distTo180 ? 0 : 180;
   }
 
   @Override
   public void execute() {
     double currentHeading = m_driveSubsystem.getHeading();
     
-    // Normalize target to match the current heading's range to avoid wraparound issues
-    // If target is 180 but current is -170, we want to use -180 as the target instead
-    double normalizedTarget = m_targetHeading;
-    if (m_targetHeading == 180 && currentHeading < 0) {
-      normalizedTarget = -180;
-    }
-    
     // Calculate error for feed-forward
-    double error = normalizedTarget - currentHeading;
+    double error = m_targetHeading - currentHeading;
     
     // Calculate PID output for heading control
-    double pidOutput = m_headingController.calculate(currentHeading, normalizedTarget);
+    double pidOutput = m_headingController.calculate(currentHeading, m_targetHeading);
     
     // Add feed-forward to boost response speed
     double ffOutput = Math.copySign(HeadingControllerConstants.kHeadingFF, error);
@@ -116,7 +115,6 @@ public class Snap180HeadingCommand extends Command {
     );
 
     SmartDashboard.putNumber("Snap180/Target", m_targetHeading);
-    SmartDashboard.putNumber("Snap180/Normalized Target", normalizedTarget);
     SmartDashboard.putNumber("Snap180/Current", currentHeading);
     SmartDashboard.putNumber("Snap180/Error", error);
     SmartDashboard.putNumber("Snap180/Rotation Output", rotationOutput);

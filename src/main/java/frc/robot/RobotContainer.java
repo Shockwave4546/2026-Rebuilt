@@ -178,25 +178,20 @@ public class RobotContainer {
             () -> m_launcher.stopLauncher(),
             m_launcher));
 
-    // D-Pad Up: (Reserved for future use)
+    // D-Pad Up: Stop intake (clears setpoint and disengages)
+    new Trigger(() -> m_driverController.getPOV() == 0)
+        .onTrue(new InstantCommand(
+            () -> m_intake.stop(),
+            m_intake));
 
     // D-Pad Down: Wiggle intake (hold to continuously shuffle balls)
     new Trigger(() -> m_driverController.getPOV() == 180)
         .whileTrue(new WiggleIntakeCommand(m_intake, Integer.MAX_VALUE));
 
-    // D-Pad Left: Toggle intake between partially deployed and fully retracted
+    // D-Pad Left: Fully retract intake
     new Trigger(() -> m_driverController.getPOV() == 270)
         .onTrue(new InstantCommand(
-            () -> {
-              m_intakePivotToggleState = !m_intakePivotToggleState;
-              if (m_intakePivotToggleState) {
-                // Partially deploy
-                m_intake.setTargetPosition(IntakeConstants.kIntakePivotPartiallyDeployedPosition);
-              } else {
-                // Fully retract
-                m_intake.setTargetPosition(IntakeConstants.kIntakePivotRetractedPosition);
-              }
-            },
+            () -> m_intake.setTargetPosition(IntakeConstants.kIntakePivotRetractedPosition),
             m_intake));
   }
 
