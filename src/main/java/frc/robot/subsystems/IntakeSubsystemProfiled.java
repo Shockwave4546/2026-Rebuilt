@@ -202,7 +202,7 @@ public class IntakeSubsystemProfiled extends SubsystemBase {
 
       // --- Instant current limiting: Protect gears from skipping when deploying against obstacle ---
       // Check if deploying downward against resistance (high current)
-      boolean isDeploying = setpoint.position < IntakeConstantsProfiled.kGravityZeroPosition;
+      boolean isDeploying = setpoint.position < IntakeConstantsProfiled.kGravityZeroPosition-.2;
       boolean isMovingDown = currentPosition > setpoint.position;
       boolean isHighCurrent = pivotCurrent > IntakeConstants.kPivotStallCurrentLimit;
 
